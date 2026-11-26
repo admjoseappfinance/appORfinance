@@ -4,7 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#050505" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="OR finance" />
     <meta name="description" content="OR finance - Organizador financeiro pessoal" />
+    <link id="pwa-manifest" rel="manifest" />
+    <link id="pwa-apple-icon" rel="apple-touch-icon" />
     <title translate="no">OR finance</title>
 
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -297,7 +303,7 @@
 
       .modal-card {
         width: 100%;
-        max-width: 440px;
+        max-width: 450px;
         max-height: 90vh;
         overflow-y: auto;
         padding: 24px;
@@ -345,6 +351,22 @@
         border-top: 1px solid #1e1e1e;
         padding-top: 16px;
         margin-top: 16px;
+      }
+
+      .manual-box {
+        padding: 14px;
+        border: 1px solid #222;
+        border-radius: 12px;
+        background: #111;
+        font-size: 12px;
+        color: #bbb;
+        line-height: 1.55;
+        display: grid;
+        gap: 8px;
+      }
+
+      .manual-box strong {
+        color: #fff;
       }
 
       .stats {
@@ -656,6 +678,110 @@
           el.textContent = "Falha de conexão: " + reason;
         }
       });
+
+      (function configurarPwaInline() {
+        function criarIconePng(tamanho) {
+          var canvas = document.createElement("canvas");
+          canvas.width = tamanho;
+          canvas.height = tamanho;
+          var ctx = canvas.getContext("2d");
+          if (!ctx) return "";
+
+          var raio = Math.round(tamanho * 0.22);
+          ctx.fillStyle = "#050505";
+          ctx.beginPath();
+          ctx.roundRect(0, 0, tamanho, tamanho, raio);
+          ctx.fill();
+
+          var borda = Math.max(2, Math.round(tamanho * 0.03));
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = borda;
+          ctx.beginPath();
+          ctx.roundRect(borda * 2, borda * 2, tamanho - borda * 4, tamanho - borda * 4, Math.max(4, raio - borda));
+          ctx.stroke();
+
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "800 " + Math.round(tamanho * 0.34) + "px Inter, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("OR", tamanho / 2, tamanho * 0.52);
+
+          return canvas.toDataURL("image/png");
+        }
+
+        var icon192 = criarIconePng(192);
+        var icon512 = criarIconePng(512);
+
+        var appleIconLink = document.getElementById("pwa-apple-icon");
+        if (appleIconLink && icon192) {
+          appleIconLink.href = icon192;
+        }
+
+        var manifestLink = document.getElementById("pwa-manifest");
+        if (manifestLink && icon192 && icon512) {
+          var startUrl = window.location.href.split("#")[0].split("?")[0];
+          var manifestObj = {
+            name: "OR finance",
+            short_name: "OR finance",
+            description: "Organizador financeiro pessoal",
+            start_url: startUrl,
+            scope: startUrl.endsWith("/") ? startUrl : startUrl.substring(0, startUrl.lastIndexOf("/") + 1),
+            display: "standalone",
+            orientation: "portrait",
+            background_color: "#050505",
+            theme_color: "#050505",
+            icons: [
+              {
+                src: icon192,
+                sizes: "192x192",
+                type: "image/png",
+                purpose: "any maskable"
+              },
+              {
+                src: icon512,
+                sizes: "512x512",
+                type: "image/png",
+                purpose: "any maskable"
+              }
+            ]
+          };
+          manifestLink.href = "data:application/manifest+json;charset=utf-8," + encodeURIComponent(JSON.stringify(manifestObj));
+        }
+
+        var isSecure = window.location.protocol === "https:" || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        if (isSecure && "serviceWorker" in navigator) {
+          var swCode = [
+            "const CACHE_NAME = 'or-finance-pwa-v1';",
+            "self.addEventListener('install', (event) => {",
+            "  self.skipWaiting();",
+            "  event.waitUntil(caches.open(CACHE_NAME));",
+            "});",
+            "self.addEventListener('activate', (event) => {",
+            "  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))));",
+            "  self.clients.claim();",
+            "});",
+            "self.addEventListener('fetch', (event) => {",
+            "  if (event.request.method !== 'GET') return;",
+            "  event.respondWith(",
+            "    fetch(event.request)",
+            "      .then((response) => {",
+            "        if (response && response.status === 200 && response.type === 'basic') {",
+            "          const clone = response.clone();",
+            "          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));",
+            "        }",
+            "        return response;",
+            "      })",
+            "      .catch(() => caches.match(event.request))",
+            "  );",
+            "});"
+          ].join("\n");
+
+          var swUrl = "data:application/javascript;charset=utf-8," + encodeURIComponent(swCode);
+          navigator.serviceWorker.register(swUrl).catch(function (err) {
+            console.warn("Service Worker inline:", err);
+          });
+        }
+      })();
     </script>
 
     <script type="text/babel">
@@ -948,11 +1074,53 @@
         const [mostrarSaldo, setMostrarSaldo] = useState(true);
         const [modalMovimentacoes, setModalMovimentacoes] = useState(false);
         const [modalConfiguracoes, setModalConfiguracoes] = useState(false);
+        const [mostrarManual, setMostrarManual] = useState(false);
+
+        const [deferredPrompt, setDeferredPrompt] = useState(null);
+        const [appInstalado, setAppInstalado] = useState(() => {
+          return window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+        });
 
         const [novaSenha, setNovaSenha] = useState("");
         const [confirmarSenha, setConfirmarSenha] = useState("");
         const [alterandoSenha, setAlterandoSenha] = useState(false);
         const [resetandoConta, setResetandoConta] = useState(false);
+
+        useEffect(() => {
+          function handleBeforeInstallPrompt(e) {
+            e.preventDefault();
+            setDeferredPrompt(e);
+          }
+
+          function handleAppInstalled() {
+            setDeferredPrompt(null);
+            setAppInstalado(true);
+            alert("OR finance instalado como aplicativo!");
+          }
+
+          window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+          window.addEventListener("appinstalled", handleAppInstalled);
+
+          return () => {
+            window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+            window.removeEventListener("appinstalled", handleAppInstalled);
+          };
+        }, []);
+
+        async function instalarApp() {
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const choice = await deferredPrompt.userChoice;
+            if (choice && choice.outcome === "accepted") {
+              setDeferredPrompt(null);
+            }
+            return;
+          }
+
+          alert(
+            "Para instalar como aplicativo (modo app):\n\n• Android / Chrome: toque nos 3 pontinhos (⋮) do navegador e escolha 'Instalar aplicativo' ou 'Adicionar à tela inicial'.\n• iPhone / Safari: toque em Compartilhar e depois em 'Adicionar à Tela de Início'."
+          );
+        }
 
         useEffect(() => {
           localStorage.setItem("orfinance_metas", JSON.stringify(metas));
@@ -2310,6 +2478,17 @@
                       <p>{email || "Conta conectada"}</p>
 
                       <div className="quick-actions">
+                        {!appInstalado && (
+                          <button type="button" onClick={instalarApp}>
+                            📲 Instalar app
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setMostrarManual((prev) => !prev)}
+                        >
+                          📖 {mostrarManual ? "Ocultar manual de uso" : "Manual de uso"}
+                        </button>
                         <button
                           type="button"
                           onClick={() => setMostrarSaldo((prev) => !prev)}
@@ -2335,6 +2514,18 @@
                           💵 Criar / abrir conta Dinheiro em espécie
                         </button>
                       </div>
+
+                      {mostrarManual && (
+                        <div className="settings-section">
+                          <div className="manual-box">
+                            <div><strong>1. Contas e Dinheiro em espécie:</strong> Cadastre bancos, carteiras ou crie uma conta <em>Dinheiro em espécie</em> para controlar o dinheiro físico separado.</div>
+                            <div><strong>2. Entradas, Saídas e Transferências:</strong> Use <em>Entradas</em> e <em>Saídas</em> para ganhos e gastos, e <em>Transferências</em> para mover saldo de uma conta para outra sem lançar saída e entrada separadas.</div>
+                            <div><strong>3. Contas a pagar e Compromissos:</strong> Registre contas avulsas ou despesas recorrentes e toque em <em>Pagar</em> para descontar do saldo da conta.</div>
+                            <div><strong>4. Cartões e Faturas:</strong> Cadastre cartões com limite, fechamento e vencimento, lance compras à vista ou parceladas e pague faturas ou parcelas.</div>
+                            <div><strong>5. Metas e Relatórios:</strong> Acompanhe o progresso das suas metas e veja o balanço geral de entradas, saídas e saldos.</div>
+                          </div>
+                        </div>
+                      )}
 
                       <form onSubmit={alterarSenhaUsuario} className="settings-section">
                         <div className="field" style={{ marginBottom: 10 }}>
