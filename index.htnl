@@ -1,24 +1,3114 @@
-{
-  "name": "or-finance",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@capacitor/android": "^8.0.0",
-    "@capacitor/core": "^8.0.0",
-    "@supabase/supabase-js": "^2.57.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
-  },
-  "devDependencies": {
-    "@capacitor/cli": "^8.0.0",
-    "@vitejs/plugin-react": "^5.0.2",
-    "vite": "7.1.7",
-    "baseline-browser-mapping": "2.11.26",
-    "typescript": "^5.9.2"
-  }
-}
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#050505" />
+    <meta name="description" content="OR finance - Organizador financeiro pessoal" />
+    <title translate="no">OR finance</title>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      :root {
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #fff;
+        background: #050505;
+      }
+
+      html,
+      body,
+      #root {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100%;
+        background: #050505;
+      }
+
+      body {
+        min-height: 100vh;
+      }
+
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+
+      input,
+      select,
+      textarea {
+        font: inherit;
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #262626;
+        border-radius: 9px;
+        background: #101010;
+        color: #fff;
+        outline: none;
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus {
+        border-color: #555;
+      }
+
+      .app {
+        min-height: 100vh;
+        background: #050505;
+        color: #fff;
+      }
+
+      .layout {
+        display: flex;
+      }
+
+      .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: 250px;
+        padding: 28px 18px;
+        background: #080808;
+        border-right: 1px solid #1d1d1d;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 4px 8px 30px;
+      }
+
+      .brand-logo {
+        width: 42px;
+        height: 42px;
+        border: 1px solid #fff;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        font-size: 20px;
+        font-weight: 800;
+        flex-shrink: 0;
+      }
+
+      .brand-name {
+        font-size: 18px;
+        font-weight: 750;
+      }
+
+      .brand-subtitle,
+      .eyebrow,
+      .panel-title span,
+      .page span {
+        color: #666;
+        font-size: 9px;
+        letter-spacing: 1.8px;
+        font-weight: 700;
+      }
+
+      .nav {
+        display: grid;
+        gap: 5px;
+        overflow-y: auto;
+        padding-bottom: 16px;
+      }
+
+      .nav-button,
+      .settings-button {
+        width: 100%;
+        padding: 12px 13px;
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        color: #777;
+        text-align: left;
+      }
+
+      .nav-button:hover,
+      .nav-button.active,
+      .settings-button:hover {
+        background: #151515;
+        color: #fff;
+      }
+
+      .settings-button {
+        margin-top: auto;
+        border-top: 1px solid #181818;
+        border-radius: 0;
+        padding-top: 16px;
+      }
+
+      .overlay {
+        display: none;
+      }
+
+      .main {
+        width: calc(100% - 250px);
+        margin-left: 250px;
+      }
+
+      .topbar {
+        height: 90px;
+        padding: 20px 42px;
+        border-bottom: 1px solid #1d1d1d;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .topbar > div:nth-child(2) {
+        flex: 1;
+      }
+
+      .topbar h1 {
+        margin: 4px 0 0;
+        font-size: 25px;
+        font-weight: 700;
+      }
+
+      .profile {
+        width: 38px;
+        height: 38px;
+        border: 1px solid #333;
+        border-radius: 50%;
+        background: #101010;
+        display: grid;
+        place-items: center;
+        color: #aaa;
+        font-size: 12px;
+      }
+
+      .mobile-menu {
+        display: none;
+        border: 1px solid #292929;
+        border-radius: 9px;
+        background: #101010;
+        color: #fff;
+        width: 42px;
+        height: 42px;
+      }
+
+      .content {
+        padding: 38px 42px;
+        max-width: 1450px;
+      }
+
+      .hero {
+        min-height: 170px;
+        padding: 32px;
+        border: 1px solid #222;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #111, #080808);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      .hero span,
+      .stat-card span {
+        display: block;
+        color: #777;
+        font-size: 12px;
+        margin-bottom: 10px;
+      }
+
+      .hero strong {
+        display: block;
+        font-size: 42px;
+        letter-spacing: -1.5px;
+      }
+
+      .hero-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .primary-button {
+        padding: 13px 18px;
+        border: 0;
+        border-radius: 9px;
+        background: #fff;
+        color: #000;
+        font-weight: 700;
+      }
+
+      .secondary-button {
+        padding: 10px 14px;
+        border: 1px solid #2b2b2b;
+        border-radius: 9px;
+        background: #121212;
+        color: #ddd;
+        font-weight: 600;
+      }
+
+      .secondary-button:hover {
+        background: #1b1b1b;
+        color: #fff;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.78);
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        z-index: 2000;
+      }
+
+      .modal-card {
+        width: 100%;
+        max-width: 380px;
+        padding: 24px;
+        border: 1px solid #262626;
+        border-radius: 16px;
+        background: #0d0d0d;
+      }
+
+      .modal-card h3 {
+        margin: 6px 0 8px;
+        font-size: 18px;
+      }
+
+      .modal-card p {
+        margin: 0 0 18px;
+        color: #777;
+        font-size: 13px;
+      }
+
+      .modal-options {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .option-btn {
+        padding: 16px 12px;
+        border: 1px solid #2b2b2b;
+        border-radius: 12px;
+        background: #121212;
+        color: #fff;
+        font-weight: 700;
+        display: grid;
+        gap: 4px;
+        text-align: center;
+      }
+
+      .option-btn:hover {
+        background: #1c1c1c;
+        border-color: #fff;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin: 14px 0;
+      }
+
+      .stat-card {
+        padding: 22px;
+        border: 1px solid #202020;
+        border-radius: 16px;
+        background: #0b0b0b;
+      }
+
+      .stat-card strong {
+        display: block;
+        font-size: 22px;
+        margin-bottom: 7px;
+      }
+
+      .stat-card small {
+        color: #555;
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1.6fr 0.8fr;
+        gap: 14px;
+        margin-top: 14px;
+      }
+
+      .panel {
+        padding: 25px;
+        border: 1px solid #202020;
+        border-radius: 16px;
+        background: #0b0b0b;
+        margin-bottom: 16px;
+      }
+
+      .panel-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .panel h2 {
+        margin: 6px 0 0;
+        font-size: 18px;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        align-items: end;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field label {
+        font-size: 11px;
+        color: #888;
+        font-weight: 600;
+      }
+
+      .list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .list-item {
+        padding: 15px 16px;
+        border: 1px solid #1c1c1c;
+        border-radius: 12px;
+        background: #0f0f0f;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .list-item strong {
+        display: block;
+        font-size: 15px;
+        margin-bottom: 4px;
+      }
+
+      .list-item small {
+        color: #777;
+        font-size: 12px;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 4px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .badge-pending {
+        background: #271f0e;
+        color: #f5b942;
+      }
+
+      .badge-paid {
+        background: #0e2618;
+        color: #4ade80;
+      }
+
+      .empty {
+        min-height: 180px;
+        display: grid;
+        place-content: center;
+        text-align: center;
+      }
+
+      .empty-icon {
+        color: #444;
+        font-size: 30px;
+      }
+
+      .empty h3 {
+        margin: 10px 0 5px;
+        font-size: 16px;
+      }
+
+      .empty p,
+      .page p {
+        margin: 0;
+        color: #555;
+        font-size: 13px;
+      }
+
+      .quick-actions {
+        display: grid;
+        gap: 9px;
+      }
+
+      .quick-actions button {
+        padding: 13px;
+        border: 1px solid #252525;
+        border-radius: 9px;
+        background: #101010;
+        color: #aaa;
+        text-align: left;
+      }
+
+      .quick-actions button:hover {
+        color: #fff;
+        border-color: #3a3a3a;
+      }
+
+      .login-wrapper {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+      }
+
+      .login-box {
+        width: 100%;
+        max-width: 400px;
+        padding: 32px;
+        border: 1px solid #202020;
+        border-radius: 20px;
+        background: #0b0b0b;
+      }
+
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 14px;
+      }
+
+      .credit-card-box {
+        padding: 20px;
+        border: 1px solid #262626;
+        border-radius: 16px;
+        background: linear-gradient(145deg, #141414, #0a0a0a);
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #1c1c1c;
+        border-radius: 999px;
+        overflow: hidden;
+        margin: 10px 0;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: #fff;
+        transition: width 0.25s ease;
+      }
+
+      @media (max-width: 800px) {
+        .sidebar {
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 280px;
+          padding: 22px 16px;
+          transform: translateX(-100%);
+          transition: transform 0.2s ease;
+          border-right: 1px solid #222;
+        }
+
+        .sidebar.mobile-open {
+          transform: translateX(0);
+        }
+
+        .overlay.mobile-open {
+          display: block;
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.65);
+          z-index: 999;
+        }
+
+        .main {
+          width: 100%;
+          margin-left: 0;
+          padding-bottom: 20px;
+        }
+
+        .topbar {
+          height: 70px;
+          padding: 14px 16px;
+        }
+
+        .mobile-menu {
+          display: grid;
+          place-items: center;
+        }
+
+        .content {
+          padding: 16px;
+        }
+
+        .hero {
+          min-height: 150px;
+          padding: 22px;
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .hero strong {
+          font-size: 32px;
+        }
+
+        .stats {
+          grid-template-columns: 1fr;
+        }
+
+        .dashboard-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useEffect, useState } = React;
+
+      const supabase = window.supabase.createClient(
+        "https://qprlpwyvssxjzcftkgav.supabase.co",
+        "sb_publishable_hGG9yCIjIcvmIqo69n5nRQ_uImcekYe"
+      );
+
+      const menu = [
+        "Início",
+        "Contas",
+        "Entradas",
+        "Saídas",
+        "Contas a pagar",
+        "Compromissos",
+        "Cartões",
+        "Metas",
+        "Relatórios",
+      ];
+
+      function normalizarId(valor) {
+        if (valor === undefined || valor === null) return null;
+        const texto = String(valor).trim();
+        if (!texto || texto === "null" || texto === "undefined") return null;
+        return texto;
+      }
+
+      function getCardId(card) {
+        return normalizarId(card?.id);
+      }
+
+      function getCardIdColumn() {
+        return "id";
+      }
+
+      function isUuid(valor) {
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          String(valor || "")
+        );
+      }
+
+      function moeda(valor) {
+        return `R$ ${Number(valor || 0).toFixed(2).replace(".", ",")}`;
+      }
+
+      function Login({ onLogin }) {
+        const [email, setEmail] = useState("");
+        const [password, setPassword] = useState("");
+        const [modoCadastro, setModoCadastro] = useState(false);
+        const [carregando, setCarregando] = useState(false);
+
+        async function autenticar(e) {
+          e.preventDefault();
+          setCarregando(true);
+
+          const { data, error } = modoCadastro
+            ? await supabase.auth.signUp({ email, password })
+            : await supabase.auth.signInWithPassword({ email, password });
+
+          setCarregando(false);
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+
+          if (modoCadastro && !data.session) {
+            alert("Cadastro realizado! Verifique seu e-mail para confirmar a conta.");
+            setModoCadastro(false);
+            return;
+          }
+
+          if (data.session) {
+            onLogin(data.session);
+          }
+        }
+
+        return (
+          <div className="login-wrapper">
+            <div className="login-box">
+              <div className="brand" style={{ paddingBottom: 24 }}>
+                <div className="brand-logo" translate="no">OR</div>
+                <div>
+                  <div className="brand-name" translate="no">OR finance</div>
+                  <div className="brand-subtitle">CONTROLE PESSOAL</div>
+                </div>
+              </div>
+
+              <form onSubmit={autenticar} style={{ display: "grid", gap: 14 }}>
+                <div className="field">
+                  <label>E-MAIL</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>SENHA</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={carregando}
+                  style={{ width: "100%", marginTop: 6 }}
+                >
+                  {carregando
+                    ? "Aguarde..."
+                    : modoCadastro
+                    ? "Criar conta"
+                    : "Entrar"}
+                </button>
+              </form>
+
+              <button
+                type="button"
+                className="secondary-button"
+                style={{ width: "100%", marginTop: 12 }}
+                onClick={() => setModoCadastro((prev) => !prev)}
+              >
+                {modoCadastro
+                  ? "Já tenho conta — Entrar"
+                  : "Não tem conta? Cadastre-se"}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      function Painel({ email, sair, userId }) {
+        const [contas, setContas] = useState([]);
+        const [entradas, setEntradas] = useState([]);
+        const [despesas, setDespesas] = useState([]);
+        const [contasPagar, setContasPagar] = useState([]);
+        const [cartoes, setCartoes] = useState([]);
+        const [compras, setCompras] = useState([]);
+        const [parcelas, setParcelas] = useState([]);
+        const [faturas, setFaturas] = useState([]);
+
+        const [nomeConta, setNomeConta] = useState("");
+        const [saldoConta, setSaldoConta] = useState("");
+
+        const [valorEntrada, setValorEntrada] = useState("");
+        const [descricaoEntrada, setDescricaoEntrada] = useState("");
+        const [contaEntrada, setContaEntrada] = useState("");
+
+        const [valorDespesa, setValorDespesa] = useState("");
+        const [descricaoDespesa, setDescricaoDespesa] = useState("");
+        const [contaDespesa, setContaDespesa] = useState("");
+
+        const [descricaoContaPagar, setDescricaoContaPagar] = useState("");
+        const [valorContaPagar, setValorContaPagar] = useState("");
+        const [vencimentoContaPagar, setVencimentoContaPagar] = useState("");
+        const [contaPagarSelecionada, setContaPagarSelecionada] = useState("");
+
+        const [descricaoCompromisso, setDescricaoCompromisso] = useState("");
+        const [valorCompromisso, setValorCompromisso] = useState("");
+        const [vencimentoCompromisso, setVencimentoCompromisso] = useState("");
+        const [contaCompromissoSelecionada, setContaCompromissoSelecionada] = useState("");
+        const [compromissoEditando, setCompromissoEditando] = useState(null);
+
+        const [nomeCartao, setNomeCartao] = useState("");
+        const [bancoCartao, setBancoCartao] = useState("");
+        const [ultimosQuatro, setUltimosQuatro] = useState("");
+        const [limiteCartao, setLimiteCartao] = useState("");
+        const [fechamentoCartao, setFechamentoCartao] = useState("");
+        const [vencimentoCartao, setVencimentoCartao] = useState("");
+        const [bandeiraCartao, setBandeiraCartao] = useState("");
+        const [corCartao, setCorCartao] = useState("#ffffff");
+        const [cartaoEditando, setCartaoEditando] = useState(null);
+
+        const [contasFaturaSelecionadas, setContasFaturaSelecionadas] = useState({});
+        const [contasParcelaSelecionadas, setContasParcelaSelecionadas] = useState({});
+
+        const [cartaoCompra, setCartaoCompra] = useState("");
+        const [descricaoCompra, setDescricaoCompra] = useState("");
+        const [valorCompra, setValorCompra] = useState("");
+        const [dataCompra, setDataCompra] = useState(new Date().toISOString().split("T")[0]);
+        const [totalParcelasCompra, setTotalParcelasCompra] = useState("1");
+        const [observacaoCompra, setObservacaoCompra] = useState("");
+
+        const [metas, setMetas] = useState(() => {
+          try {
+            return JSON.parse(localStorage.getItem("orfinance_metas") || "[]");
+          } catch {
+            return [];
+          }
+        });
+        const [tituloMeta, setTituloMeta] = useState("");
+        const [valorAlvoMeta, setValorAlvoMeta] = useState("");
+        const [valorAtualMeta, setValorAtualMeta] = useState("");
+
+        const [active, setActive] = useState("Início");
+        const [menuAberto, setMenuAberto] = useState(false);
+        const [mostrarSaldo, setMostrarSaldo] = useState(true);
+        const [modalMovimentacoes, setModalMovimentacoes] = useState(false);
+
+        useEffect(() => {
+          localStorage.setItem("orfinance_metas", JSON.stringify(metas));
+        }, [metas]);
+
+        async function carregarContas() {
+          const { data, error } = await supabase
+            .from("accounts")
+            .select("*")
+            .order("created_at", { ascending: false });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+          setContas(data || []);
+        }
+
+        async function carregarEntradas() {
+          const { data, error } = await supabase
+            .from("incomes")
+            .select("*")
+            .order("income_date", { ascending: false });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+          setEntradas(data || []);
+        }
+
+        async function carregarDespesas() {
+          const { data, error } = await supabase
+            .from("expenses")
+            .select("*")
+            .order("expense_date", { ascending: false });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+          setDespesas(data || []);
+        }
+
+        async function carregarContasPagar() {
+          const { data, error } = await supabase
+            .from("bills")
+            .select("*")
+            .order("due_date", { ascending: true });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+          setContasPagar(data || []);
+        }
+
+        async function carregarCartoes() {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          if (!user) return;
+
+          const { data: cartoesData, error: erroCartoes } = await supabase
+            .from("cards")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false });
+
+          if (erroCartoes) {
+            alert(erroCartoes.message);
+            return;
+          }
+
+          const { data: comprasData, error: erroCompras } = await supabase
+            .from("card_purchases")
+            .select("id, card_id")
+            .eq("user_id", user.id);
+
+          if (erroCompras) {
+            alert(erroCompras.message);
+            return;
+          }
+
+          const { data: parcelasData, error: erroParcelas } = await supabase
+            .from("card_installments")
+            .select("purchase_id, amount, status")
+            .eq("user_id", user.id)
+            .eq("status", "pending");
+
+          if (erroParcelas) {
+            alert(erroParcelas.message);
+            return;
+          }
+
+          const compraParaCartao = new Map(
+            (comprasData || []).map((compra) => [
+              String(compra.id),
+              String(compra.card_id),
+            ])
+          );
+
+          const utilizadoPorCartao = {};
+
+          for (const parcela of parcelasData || []) {
+            const cardId = compraParaCartao.get(String(parcela.purchase_id));
+            if (!cardId) continue;
+            utilizadoPorCartao[cardId] =
+              (utilizadoPorCartao[cardId] || 0) + Number(parcela.amount || 0);
+          }
+
+          const cartoesAtualizados = [];
+
+          for (const cartao of cartoesData || []) {
+            const idCartao = getCardId(cartao);
+            if (!isUuid(idCartao)) continue;
+
+            const limite = Number(cartao.credit_limit || 0);
+            const utilizado = Number(utilizadoPorCartao[String(idCartao)] || 0);
+            const disponivel = Math.max(0, limite - utilizado);
+
+            if (Math.abs(Number(cartao.available_limit || 0) - disponivel) > 0.009) {
+              const { error: erroAtualizacao } = await supabase
+                .from("cards")
+                .update({ available_limit: disponivel })
+                .eq(getCardIdColumn(cartao), idCartao)
+                .eq("user_id", user.id);
+
+              if (erroAtualizacao) {
+                alert(erroAtualizacao.message);
+                return;
+              }
+            }
+
+            cartoesAtualizados.push({
+              ...cartao,
+              available_limit: disponivel,
+            });
+          }
+
+          setCartoes(cartoesAtualizados);
+        }
+
+        async function carregarCompras() {
+          const { data, error } = await supabase
+            .from("card_purchases")
+            .select("*")
+            .order("purchase_date", { ascending: false });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+          setCompras(data || []);
+        }
+
+        async function carregarParcelas() {
+          const { data, error } = await supabase
+            .from("card_installments")
+            .select("*")
+            .order("due_date", { ascending: true });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+          setParcelas(data || []);
+        }
+
+        async function carregarFaturas() {
+          const { data, error } = await supabase
+            .from("invoices")
+            .select("*")
+            .order("due_date", { ascending: true });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+          setFaturas(data || []);
+        }
+
+        async function criarConta(e) {
+          e.preventDefault();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const { error } = await supabase.from("accounts").insert({
+            user_id: user.id,
+            name: nomeConta,
+            type: "corrente",
+            balance: Number(saldoConta) || 0,
+          });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+
+          setNomeConta("");
+          setSaldoConta("");
+          await carregarContas();
+          alert("Conta adicionada com sucesso!");
+        }
+
+        async function criarEntrada(e) {
+          e.preventDefault();
+          const conta = contas[Number(contaEntrada)];
+          if (!conta) {
+            alert("Selecione uma conta.");
+            return;
+          }
+
+          const identificador = conta.id ?? conta.uuid;
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user || !identificador) return;
+
+          const valor = Number(valorEntrada) || 0;
+
+          const { error } = await supabase.from("incomes").insert({
+            user_id: user.id,
+            account_id: identificador,
+            description: descricaoEntrada,
+            amount: valor,
+            income_date: new Date().toISOString().split("T")[0],
+          });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+
+          const novoSaldo = Number(conta.balance || 0) + valor;
+          const colunaId = conta.id !== undefined ? "id" : "uuid";
+
+          const { error: erroSaldo } = await supabase
+            .from("accounts")
+            .update({ balance: novoSaldo })
+            .eq(colunaId, identificador);
+
+          if (erroSaldo) {
+            alert(erroSaldo.message);
+            return;
+          }
+
+          setValorEntrada("");
+          setDescricaoEntrada("");
+          setContaEntrada("");
+          await carregarContas();
+          await carregarEntradas();
+          alert("Entrada adicionada com sucesso!");
+        }
+
+        async function criarDespesa(e) {
+          e.preventDefault();
+          const conta = contas[Number(contaDespesa)];
+          if (!conta) {
+            alert("Selecione uma conta.");
+            return;
+          }
+
+          const identificador = conta.id ?? conta.uuid;
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user || !identificador) return;
+
+          const valor = Number(valorDespesa) || 0;
+
+          const { error } = await supabase.from("expenses").insert({
+            user_id: user.id,
+            account_id: identificador,
+            description: descricaoDespesa,
+            amount: valor,
+            expense_date: new Date().toISOString().split("T")[0],
+          });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+
+          const novoSaldo = Number(conta.balance || 0) - valor;
+          const colunaId = conta.id !== undefined ? "id" : "uuid";
+
+          const { error: erroSaldo } = await supabase
+            .from("accounts")
+            .update({ balance: novoSaldo })
+            .eq(colunaId, identificador);
+
+          if (erroSaldo) {
+            alert(erroSaldo.message);
+            return;
+          }
+
+          setValorDespesa("");
+          setDescricaoDespesa("");
+          setContaDespesa("");
+          await carregarContas();
+          await carregarDespesas();
+          alert("Despesa adicionada com sucesso!");
+        }
+
+        async function criarContaPagar(e) {
+          e.preventDefault();
+          const conta = contas[Number(contaPagarSelecionada)];
+          if (!conta) {
+            alert("Selecione a conta.");
+            return;
+          }
+
+          const identificador = conta.id ?? conta.uuid;
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user || !identificador) return;
+
+          const { error } = await supabase.from("bills").insert({
+            user_id: user.id,
+            account_id: identificador,
+            description: descricaoContaPagar,
+            amount: Number(valorContaPagar) || 0,
+            due_date: vencimentoContaPagar,
+            status: "pending",
+            recurring: false,
+          });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+
+          setDescricaoContaPagar("");
+          setValorContaPagar("");
+          setVencimentoContaPagar("");
+          setContaPagarSelecionada("");
+          await carregarContasPagar();
+          alert("Conta a pagar adicionada com sucesso!");
+        }
+
+        async function criarCompromisso(e) {
+          e.preventDefault();
+          const conta = contas[Number(contaCompromissoSelecionada)];
+          if (!conta) {
+            alert("Selecione a conta.");
+            return;
+          }
+
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          const accountId = conta.id ?? conta.uuid;
+          if (!user || !accountId) return;
+
+          const dados = {
+            user_id: user.id,
+            account_id: accountId,
+            description: descricaoCompromisso,
+            amount: Number(valorCompromisso) || 0,
+            due_date: vencimentoCompromisso,
+            status: "pending",
+            recurring: true,
+          };
+
+          const { error } = compromissoEditando
+            ? await supabase
+                .from("bills")
+                .update({
+                  account_id: accountId,
+                  description: descricaoCompromisso,
+                  amount: Number(valorCompromisso) || 0,
+                  due_date: vencimentoCompromisso,
+                  recurring: true,
+                })
+                .eq("id", compromissoEditando.id)
+            : await supabase.from("bills").insert(dados);
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+
+          setDescricaoCompromisso("");
+          setValorCompromisso("");
+          setVencimentoCompromisso("");
+          setContaCompromissoSelecionada("");
+          setCompromissoEditando(null);
+          await carregarContasPagar();
+          alert(
+            compromissoEditando
+              ? "Compromisso atualizado com sucesso!"
+              : "Compromisso cadastrado com sucesso!"
+          );
+        }
+
+        function editarCompromisso(compromisso) {
+          const indiceConta = contas.findIndex(
+            (conta) =>
+              String(conta.id ?? conta.uuid) === String(compromisso.account_id)
+          );
+
+          setCompromissoEditando(compromisso);
+          setDescricaoCompromisso(compromisso.description || "");
+          setValorCompromisso(String(compromisso.amount || ""));
+          setVencimentoCompromisso(compromisso.due_date || "");
+          setContaCompromissoSelecionada(indiceConta >= 0 ? String(indiceConta) : "");
+        }
+
+        function cancelarEdicaoCompromisso() {
+          setCompromissoEditando(null);
+          setDescricaoCompromisso("");
+          setValorCompromisso("");
+          setVencimentoCompromisso("");
+          setContaCompromissoSelecionada("");
+        }
+
+        async function pagarConta(conta) {
+          if (conta.status === "paid") return;
+
+          const contaSelecionada = contas.find(
+            (item) => (item.id ?? item.uuid) === conta.account_id
+          );
+
+          if (!contaSelecionada) {
+            alert("Conta bancária não encontrada.");
+            return;
+          }
+
+          const confirmar = window.confirm(
+            `Confirmar pagamento de "${conta.description}" no valor de ${moeda(conta.amount)}?`
+          );
+          if (!confirmar) return;
+
+          const novoSaldo =
+            Number(contaSelecionada.balance || 0) - Number(conta.amount || 0);
+          const colunaId = contaSelecionada.id !== undefined ? "id" : "uuid";
+
+          const { error: erroSaldo } = await supabase
+            .from("accounts")
+            .update({ balance: novoSaldo })
+            .eq(colunaId, conta.account_id);
+
+          if (erroSaldo) {
+            alert(erroSaldo.message);
+            return;
+          }
+
+          const { error } = await supabase
+            .from("bills")
+            .update({
+              status: "paid",
+              paid_date: new Date().toISOString().split("T")[0],
+            })
+            .eq("id", conta.id);
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+
+          await carregarContas();
+          await carregarContasPagar();
+          alert("Conta paga com sucesso!");
+        }
+
+        async function pagarFatura(fatura) {
+          if (fatura.status === "paid") return;
+
+          const contaId = contasFaturaSelecionadas[fatura.id];
+          const contaSelecionada = contas.find(
+            (item) => String(item.id ?? item.uuid) === String(contaId)
+          );
+
+          if (!contaSelecionada) {
+            alert("Selecione a conta bancária que será usada para pagar a fatura.");
+            return;
+          }
+
+          const restante = Math.max(
+            0,
+            Number(fatura.total_amount || 0) - Number(fatura.paid_amount || 0)
+          );
+          if (restante <= 0) return;
+
+          const confirmar = window.confirm(
+            `Confirmar pagamento da fatura no valor de ${moeda(restante)}?`
+          );
+          if (!confirmar) return;
+
+          const novoSaldo = Number(contaSelecionada.balance || 0) - restante;
+          const colunaId = contaSelecionada.id !== undefined ? "id" : "uuid";
+
+          const { error: erroSaldo } = await supabase
+            .from("accounts")
+            .update({ balance: novoSaldo })
+            .eq(colunaId, contaId);
+
+          if (erroSaldo) {
+            alert(erroSaldo.message);
+            return;
+          }
+
+          const novoPago = Number(fatura.paid_amount || 0) + restante;
+
+          const { error: erroFatura } = await supabase
+            .from("invoices")
+            .update({
+              paid_amount: novoPago,
+              status: "paid",
+            })
+            .eq("id", fatura.id);
+
+          if (erroFatura) {
+            alert(erroFatura.message);
+            return;
+          }
+
+          const { data: comprasDaFatura } = await supabase
+            .from("card_purchases")
+            .select("id")
+            .eq("invoice_id", fatura.id);
+
+          if (comprasDaFatura?.length) {
+            const ids = comprasDaFatura.map((compra) => compra.id);
+            await supabase
+              .from("card_installments")
+              .update({ status: "paid" })
+              .in("purchase_id", ids)
+              .eq("due_date", fatura.due_date);
+          }
+
+          await carregarContas();
+          await carregarCartoes();
+          await carregarFaturas();
+          await carregarParcelas();
+          alert("Fatura paga com sucesso!");
+        }
+
+        async function pagarParcela(parcela) {
+          if (parcela.status === "paid") return;
+
+          const contaId = contasParcelaSelecionadas[parcela.id];
+          const contaSelecionada = contas.find(
+            (item) => String(item.id ?? item.uuid) === String(contaId)
+          );
+
+          if (!contaSelecionada) {
+            alert("Selecione a conta bancária que será usada para pagar a parcela.");
+            return;
+          }
+
+          const valor = Number(parcela.amount || 0);
+          const confirmar = window.confirm(
+            `Confirmar pagamento da parcela no valor de ${moeda(valor)}?`
+          );
+          if (!confirmar) return;
+
+          const novoSaldo = Number(contaSelecionada.balance || 0) - valor;
+          const colunaId = contaSelecionada.id !== undefined ? "id" : "uuid";
+
+          const { error: erroSaldo } = await supabase
+            .from("accounts")
+            .update({ balance: novoSaldo })
+            .eq(colunaId, contaId);
+
+          if (erroSaldo) {
+            alert(erroSaldo.message);
+            return;
+          }
+
+          const { error: erroParcela } = await supabase
+            .from("card_installments")
+            .update({ status: "paid" })
+            .eq("id", parcela.id);
+
+          if (erroParcela) {
+            alert(erroParcela.message);
+            return;
+          }
+
+          const { data: compra } = await supabase
+            .from("card_purchases")
+            .select("card_id")
+            .eq("id", parcela.purchase_id)
+            .maybeSingle();
+
+          const { data: fatura } = await supabase
+            .from("invoices")
+            .select("*")
+            .eq("card_id", compra?.card_id)
+            .eq("due_date", parcela.due_date)
+            .maybeSingle();
+
+          if (fatura) {
+            const novoPago = Math.min(
+              Number(fatura.total_amount || 0),
+              Number(fatura.paid_amount || 0) + valor
+            );
+
+            await supabase
+              .from("invoices")
+              .update({
+                paid_amount: novoPago,
+                status:
+                  novoPago >= Number(fatura.total_amount || 0) ? "paid" : "open",
+              })
+              .eq("id", fatura.id);
+          }
+
+          await carregarContas();
+          await carregarCartoes();
+          await carregarParcelas();
+          await carregarFaturas();
+          alert("Parcela paga com sucesso!");
+        }
+
+        async function criarCartao(e) {
+          e.preventDefault();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const limite = Number(limiteCartao) || 0;
+
+          const { error } = await supabase.from("cards").insert({
+            user_id: user.id,
+            name: nomeCartao,
+            bank_name: bancoCartao || null,
+            last_four_digits: ultimosQuatro || null,
+            credit_limit: limite,
+            available_limit: limite,
+            closing_day: fechamentoCartao ? Number(fechamentoCartao) : null,
+            due_day: vencimentoCartao ? Number(vencimentoCartao) : null,
+            brand: bandeiraCartao || null,
+            color: corCartao || "#ffffff",
+            is_active: true,
+          });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+
+          cancelarEdicaoCartao();
+          await carregarCartoes();
+          alert("Cartão adicionado com sucesso!");
+        }
+
+        function iniciarEdicaoCartao(cartao) {
+          setCartaoEditando(cartao);
+          setNomeCartao(cartao.name || "");
+          setBancoCartao(cartao.bank_name || "");
+          setUltimosQuatro(cartao.last_four_digits || "");
+          setLimiteCartao(cartao.credit_limit ?? "");
+          setFechamentoCartao(cartao.closing_day ?? "");
+          setVencimentoCartao(cartao.due_day ?? "");
+          setBandeiraCartao(cartao.brand || "");
+          setCorCartao(cartao.color || "#ffffff");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function cancelarEdicaoCartao() {
+          setCartaoEditando(null);
+          setNomeCartao("");
+          setBancoCartao("");
+          setUltimosQuatro("");
+          setLimiteCartao("");
+          setFechamentoCartao("");
+          setVencimentoCartao("");
+          setBandeiraCartao("");
+          setCorCartao("#ffffff");
+        }
+
+        async function salvarEdicaoCartao(e) {
+          e.preventDefault();
+          if (!cartaoEditando) return;
+
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const limite = Number(limiteCartao) || 0;
+
+          const { error } = await supabase
+            .from("cards")
+            .update({
+              name: nomeCartao,
+              bank_name: bancoCartao || null,
+              last_four_digits: ultimosQuatro || null,
+              credit_limit: limite,
+              available_limit: limite,
+              closing_day: fechamentoCartao ? Number(fechamentoCartao) : null,
+              due_day: vencimentoCartao ? Number(vencimentoCartao) : null,
+              brand: bandeiraCartao || null,
+              color: corCartao || "#ffffff",
+            })
+            .eq(getCardIdColumn(cartaoEditando), getCardId(cartaoEditando))
+            .eq("user_id", user.id);
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+
+          cancelarEdicaoCartao();
+          await carregarCartoes();
+          alert("Cartão atualizado com sucesso!");
+        }
+
+        function adicionarMes(data, quantidade) {
+          const novaData = new Date(data);
+          novaData.setMonth(novaData.getMonth() + quantidade);
+          return novaData;
+        }
+
+        function formatarData(data) {
+          if (!data) return "-";
+          return new Date(`${data}T00:00:00`).toLocaleDateString("pt-BR");
+        }
+
+        function dataParaString(data) {
+          return data.toISOString().split("T")[0];
+        }
+
+        function calcularFatura(card, data) {
+          const compra = new Date(`${data}T00:00:00`);
+          const fechamento = Number(card.closing_day || 31);
+          const vencimento = Number(card.due_day || 10);
+
+          let referencia = new Date(compra.getFullYear(), compra.getMonth(), 1);
+          if (compra.getDate() > fechamento) {
+            referencia = adicionarMes(referencia, 1);
+          }
+
+          const ultimoDiaFechamento = new Date(
+            referencia.getFullYear(),
+            referencia.getMonth() + 1,
+            0
+          ).getDate();
+
+          const diaFechamento = Math.min(fechamento, ultimoDiaFechamento);
+          const dataFechamento = new Date(
+            referencia.getFullYear(),
+            referencia.getMonth(),
+            diaFechamento
+          );
+
+          let anoVencimento = referencia.getFullYear();
+          let mesVencimento = referencia.getMonth();
+          if (vencimento <= diaFechamento) {
+            mesVencimento += 1;
+          }
+
+          const ultimoDiaVencimento = new Date(
+            anoVencimento,
+            mesVencimento + 1,
+            0
+          ).getDate();
+
+          const diaVencimento = Math.min(vencimento, ultimoDiaVencimento);
+          const dataVencimento = new Date(
+            anoVencimento,
+            mesVencimento,
+            diaVencimento
+          );
+
+          return {
+            referenceMonth: `${referencia.getFullYear()}-${String(
+              referencia.getMonth() + 1
+            ).padStart(2, "0")}-01`,
+            closingDate: dataParaString(dataFechamento),
+            dueDate: dataParaString(dataVencimento),
+          };
+        }
+
+        async function criarCompra(e) {
+          e.preventDefault();
+
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          if (!user?.id || !isUuid(user.id)) {
+            alert("Sua sessão não possui um ID de usuário válido. Faça login novamente.");
+            return;
+          }
+
+          const cartao = cartoes.find(
+            (item) => String(getCardId(item)) === String(cartaoCompra)
+          );
+
+          if (!cartao) {
+            alert("Selecione um cartão.");
+            return;
+          }
+
+          const idCartao = getCardId(cartao);
+          if (!isUuid(idCartao)) {
+            alert("O cartão selecionado possui um ID inválido no banco de dados.");
+            return;
+          }
+
+          const valor = Number(valorCompra) || 0;
+          const totalParcelas = Math.max(1, Number(totalParcelasCompra) || 1);
+
+          if (valor <= 0) {
+            alert("Informe um valor válido.");
+            return;
+          }
+
+          const limiteDisponivelAtual = Number(
+            cartao.available_limit ?? cartao.credit_limit ?? 0
+          );
+
+          if (valor > limiteDisponivelAtual) {
+            alert(
+              `Compra não autorizada. O limite disponível é de ${moeda(
+                limiteDisponivelAtual
+              )}.`
+            );
+            return;
+          }
+
+          const valorParcela = valor / totalParcelas;
+          const primeiraFaturaDados = calcularFatura(cartao, dataCompra);
+          const faturasCompra = [];
+
+          for (let i = 1; i <= totalParcelas; i++) {
+            const referencia = adicionarMes(
+              new Date(`${primeiraFaturaDados.referenceMonth}T00:00:00`),
+              i - 1
+            );
+            const fechamento = adicionarMes(
+              new Date(`${primeiraFaturaDados.closingDate}T00:00:00`),
+              i - 1
+            );
+            const vencimento = adicionarMes(
+              new Date(`${primeiraFaturaDados.dueDate}T00:00:00`),
+              i - 1
+            );
+
+            const dadosFatura = {
+              referenceMonth: `${referencia.getFullYear()}-${String(
+                referencia.getMonth() + 1
+              ).padStart(2, "0")}-01`,
+              closingDate: dataParaString(fechamento),
+              dueDate: dataParaString(vencimento),
+            };
+
+            let { data: fatura, error: erroBusca } = await supabase
+              .from("invoices")
+              .select(
+                "id, user_id, card_id, reference_month, closing_date, due_date, total_amount, paid_amount, status"
+              )
+              .eq("user_id", user.id)
+              .eq("card_id", idCartao)
+              .eq("reference_month", dadosFatura.referenceMonth)
+              .maybeSingle();
+
+            if (erroBusca) {
+              alert(`Erro ao buscar a fatura: ${erroBusca.message}`);
+              return;
+            }
+
+            if (!fatura) {
+              const resultado = await supabase
+                .from("invoices")
+                .insert({
+                  user_id: user.id,
+                  card_id: idCartao,
+                  reference_month: dadosFatura.referenceMonth,
+                  closing_date: dadosFatura.closingDate,
+                  due_date: dadosFatura.dueDate,
+                  total_amount: 0,
+                  paid_amount: 0,
+                  status: "open",
+                })
+                .select(
+                  "id, user_id, card_id, reference_month, closing_date, due_date, total_amount, paid_amount, status"
+                )
+                .single();
+
+              if (resultado.error) {
+                alert(`Erro ao criar a fatura: ${resultado.error.message}`);
+                return;
+              }
+
+              fatura = resultado.data;
+            }
+
+            if (!fatura?.id || !isUuid(fatura.id)) {
+              alert("O banco não retornou um ID válido para a fatura.");
+              return;
+            }
+
+            faturasCompra.push({ fatura, valorParcela });
+          }
+
+          const idFaturaPrincipal = faturasCompra[0]?.fatura?.id;
+          if (!idFaturaPrincipal || !isUuid(idFaturaPrincipal)) {
+            alert("A fatura selecionada possui um ID inválido.");
+            return;
+          }
+
+          const dadosCompra = {
+            user_id: user.id,
+            card_id: idCartao,
+            invoice_id: idFaturaPrincipal,
+            description: descricaoCompra,
+            amount: valor,
+            purchase_date: dataCompra,
+            total_installments: totalParcelas,
+            current_installment: 1,
+          };
+
+          if (observacaoCompra?.trim()) {
+            dadosCompra.notes = observacaoCompra.trim();
+          }
+
+          const { data: compraCriada, error: erroCompra } = await supabase
+            .from("card_purchases")
+            .insert(dadosCompra)
+            .select(
+              "id, user_id, card_id, invoice_id, description, amount, purchase_date, total_installments, current_installment, notes"
+            )
+            .single();
+
+          if (erroCompra) {
+            alert(`Erro ao registrar a compra: ${erroCompra.message}`);
+            return;
+          }
+
+          if (!compraCriada?.id || !isUuid(compraCriada.id)) {
+            alert("A compra foi registrada, mas o banco não retornou um ID válido.");
+            return;
+          }
+
+          const listaParcelas = faturasCompra.map(
+            ({ fatura, valorParcela }, index) => ({
+              user_id: user.id,
+              purchase_id: compraCriada.id,
+              installment_number: index + 1,
+              total_installments: totalParcelas,
+              amount: valorParcela,
+              due_date: fatura.due_date,
+              status: "pending",
+            })
+          );
+
+          const { error: erroParcelas } = await supabase
+            .from("card_installments")
+            .insert(listaParcelas);
+
+          if (erroParcelas) {
+            await supabase
+              .from("card_purchases")
+              .delete()
+              .eq("id", compraCriada.id)
+              .eq("user_id", user.id);
+
+            alert(`Erro ao registrar as parcelas: ${erroParcelas.message}`);
+            return;
+          }
+
+          for (const { fatura, valorParcela } of faturasCompra) {
+            const novoTotal = Number(fatura.total_amount || 0) + valorParcela;
+            const { error: erroAtualizacaoFatura } = await supabase
+              .from("invoices")
+              .update({ total_amount: novoTotal })
+              .eq("id", fatura.id)
+              .eq("user_id", user.id);
+
+            if (erroAtualizacaoFatura) {
+              alert(`Erro ao atualizar a fatura: ${erroAtualizacaoFatura.message}`);
+              return;
+            }
+          }
+
+          setDescricaoCompra("");
+          setValorCompra("");
+          setDataCompra(new Date().toISOString().split("T")[0]);
+          setTotalParcelasCompra("1");
+          setObservacaoCompra("");
+
+          await carregarCartoes();
+          await carregarCompras();
+          await carregarParcelas();
+          await carregarFaturas();
+
+          alert("Compra registrada com sucesso!");
+        }
+
+        function adicionarMeta(e) {
+          e.preventDefault();
+          const novaMeta = {
+            id: Date.now(),
+            titulo: tituloMeta,
+            alvo: Number(valorAlvoMeta) || 0,
+            atual: Number(valorAtualMeta) || 0,
+          };
+          setMetas((prev) => [novaMeta, ...prev]);
+          setTituloMeta("");
+          setValorAlvoMeta("");
+          setValorAtualMeta("");
+        }
+
+        function atualizarMeta(id, incremento) {
+          setMetas((prev) =>
+            prev.map((m) =>
+              m.id === id ? { ...m, atual: Math.max(0, m.atual + incremento) } : m
+            )
+          );
+        }
+
+        function removerMeta(id) {
+          setMetas((prev) => prev.filter((m) => m.id !== id));
+        }
+
+        useEffect(() => {
+          carregarContas();
+          carregarEntradas();
+          carregarDespesas();
+          carregarContasPagar();
+          carregarCartoes();
+          carregarCompras();
+          carregarParcelas();
+          carregarFaturas();
+        }, [userId]);
+
+        const saldoTotal = contas.reduce(
+          (acc, conta) => acc + Number(conta.balance || 0),
+          0
+        );
+        const totalEntradas = entradas.reduce(
+          (acc, item) => acc + Number(item.amount || 0),
+          0
+        );
+        const totalSaidas = despesas.reduce(
+          (acc, item) => acc + Number(item.amount || 0),
+          0
+        );
+
+        const contasAvulsas = contasPagar.filter((c) => !c.recurring);
+        const compromissos = contasPagar.filter((c) => c.recurring);
+
+        const nomeContaPorId = (id) => {
+          const c = contas.find((item) => String(item.id ?? item.uuid) === String(id));
+          return c ? c.name : "Conta removida";
+        };
+
+        const nomeCartaoPorId = (id) => {
+          const c = cartoes.find((item) => String(getCardId(item)) === String(id));
+          return c ? c.name : "Cartão";
+        };
+
+        const exibirValor = (v) => (mostrarSaldo ? moeda(v) : "R$ ••••••");
+
+        return (
+          <div className="app">
+            <div className="layout">
+              <div
+                className={`overlay ${menuAberto ? "mobile-open" : ""}`}
+                onClick={() => setMenuAberto(false)}
+              />
+
+              <aside className={`sidebar ${menuAberto ? "mobile-open" : ""}`}>
+                <div className="brand">
+                  <div className="brand-logo" translate="no">OR</div>
+                  <div>
+                    <div className="brand-name" translate="no">OR finance</div>
+                    <div className="brand-subtitle">CONTROLE PESSOAL</div>
+                  </div>
+                </div>
+
+                <nav className="nav">
+                  {menu.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      className={`nav-button ${active === item ? "active" : ""}`}
+                      onClick={() => {
+                        setActive(item);
+                        setMenuAberto(false);
+                      }}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </nav>
+
+                <button type="button" className="settings-button" onClick={sair}>
+                  Sair ({email || "Conta"})
+                </button>
+              </aside>
+
+              <main className="main">
+                <header className="topbar">
+                  <button
+                    type="button"
+                    className="mobile-menu"
+                    onClick={() => setMenuAberto((prev) => !prev)}
+                  >
+                    ☰
+                  </button>
+                  <div>
+                    <span className="eyebrow" translate="no">OR finance</span>
+                    <h1>{active}</h1>
+                  </div>
+                  <button
+                    type="button"
+                    className="profile"
+                    onClick={() => setMostrarSaldo((prev) => !prev)}
+                    title="Mostrar/ocultar valores"
+                  >
+                    {mostrarSaldo ? "R$" : "**"}
+                  </button>
+                </header>
+
+                {modalMovimentacoes && (
+                  <div
+                    className="modal-backdrop"
+                    onClick={() => setModalMovimentacoes(false)}
+                  >
+                    <div
+                      className="modal-card"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="eyebrow">NOVA MOVIMENTAÇÃO</span>
+                      <h3>O que deseja registrar?</h3>
+                      <p>Escolha o tipo de lançamento financeiro.</p>
+                      <div className="modal-options">
+                        <button
+                          type="button"
+                          className="option-btn"
+                          onClick={() => {
+                            setModalMovimentacoes(false);
+                            setActive("Entradas");
+                          }}
+                        >
+                          <span style={{ color: "#4ade80", fontSize: 18 }}>+</span>
+                          <span>Entrada</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="option-btn"
+                          onClick={() => {
+                            setModalMovimentacoes(false);
+                            setActive("Saídas");
+                          }}
+                        >
+                          <span style={{ color: "#f87171", fontSize: 18 }}>-</span>
+                          <span>Saída</span>
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        style={{ width: "100%" }}
+                        onClick={() => setModalMovimentacoes(false)}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <section className="content">
+                  {active === "Início" && (
+                    <>
+                      <div className="hero">
+                        <div>
+                          <span>SALDO CONSOLIDADO</span>
+                          <strong>{exibirValor(saldoTotal)}</strong>
+                        </div>
+                        <div className="hero-actions">
+                          <button
+                            type="button"
+                            className="primary-button"
+                            onClick={() => setModalMovimentacoes(true)}
+                          >
+                            Movimentações
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => setActive("Contas")}
+                          >
+                            Gerenciar contas
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="stats">
+                        <div className="stat-card">
+                          <span>ENTRADAS</span>
+                          <strong>{exibirValor(totalEntradas)}</strong>
+                          <small>{entradas.length} lançamentos</small>
+                        </div>
+                        <div className="stat-card">
+                          <span>SAÍDAS</span>
+                          <strong>{exibirValor(totalSaidas)}</strong>
+                          <small>{despesas.length} lançamentos</small>
+                        </div>
+                        <div className="stat-card">
+                          <span>CONTAS A PAGAR</span>
+                          <strong>{contasPagar.length}</strong>
+                          <small>
+                            {contasPagar.filter((item) => item.status !== "paid").length}{" "}
+                            pendentes
+                          </small>
+                        </div>
+                      </div>
+
+                      <div className="dashboard-grid">
+                        <div className="panel">
+                          <div className="panel-title">
+                            <div>
+                              <span>RESUMO</span>
+                              <h2>Próximos vencimentos</h2>
+                            </div>
+                          </div>
+                          {contasPagar.filter((c) => c.status !== "paid").length === 0 ? (
+                            <div className="empty">
+                              <div className="empty-icon">✓</div>
+                              <h3>Tudo em dia</h3>
+                              <p>Nenhuma conta pendente no momento.</p>
+                            </div>
+                          ) : (
+                            <div className="list">
+                              {contasPagar
+                                .filter((c) => c.status !== "paid")
+                                .slice(0, 5)
+                                .map((c) => (
+                                  <div key={c.id} className="list-item">
+                                    <div>
+                                      <strong>{c.description}</strong>
+                                      <small>
+                                        Vencimento: {formatarData(c.due_date)} •{" "}
+                                        {nomeContaPorId(c.account_id)}
+                                      </small>
+                                    </div>
+                                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                                      <strong>{exibirValor(c.amount)}</strong>
+                                      <button
+                                        type="button"
+                                        className="primary-button"
+                                        onClick={() => pagarConta(c)}
+                                      >
+                                        Pagar
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="panel">
+                          <div className="panel-title">
+                            <div>
+                              <span>ATALHOS</span>
+                              <h2>Ações rápidas</h2>
+                            </div>
+                          </div>
+                          <div className="quick-actions">
+                            <button type="button" onClick={() => setModalMovimentacoes(true)}>
+                              ⇄ Movimentações (Entrada / Saída)
+                            </button>
+                            <button type="button" onClick={() => setActive("Contas a pagar")}>
+                              + Nova conta a pagar
+                            </button>
+                            <button type="button" onClick={() => setActive("Cartões")}>
+                              + Lançar compra no cartão
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {active === "Contas" && (
+                    <>
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>CADASTRO</span>
+                            <h2>Nova conta</h2>
+                          </div>
+                        </div>
+                        <form className="form-grid" onSubmit={criarConta}>
+                          <div className="field">
+                            <label>NOME DA CONTA</label>
+                            <input
+                              required
+                              placeholder="Ex: Nubank, Carteira..."
+                              value={nomeConta}
+                              onChange={(e) => setNomeConta(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>SALDO INICIAL (R$)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={saldoConta}
+                              onChange={(e) => setSaldoConta(e.target.value)}
+                            />
+                          </div>
+                          <button type="submit" className="primary-button">
+                            Adicionar conta
+                          </button>
+                        </form>
+                      </div>
+
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>LISTAGEM</span>
+                            <h2>Minhas contas ({contas.length})</h2>
+                          </div>
+                        </div>
+                        {contas.length === 0 ? (
+                          <div className="empty">
+                            <h3>Nenhuma conta cadastrada</h3>
+                            <p>Crie sua primeira conta acima.</p>
+                          </div>
+                        ) : (
+                          <div className="list">
+                            {contas.map((c) => (
+                              <div key={c.id ?? c.uuid} className="list-item">
+                                <div>
+                                  <strong>{c.name}</strong>
+                                  <small>{c.type || "Conta corrente"}</small>
+                                </div>
+                                <strong>{exibirValor(c.balance)}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {active === "Entradas" && (
+                    <>
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>LANÇAMENTO</span>
+                            <h2>Registrar entrada</h2>
+                          </div>
+                        </div>
+                        <form className="form-grid" onSubmit={criarEntrada}>
+                          <div className="field">
+                            <label>DESCRIÇÃO</label>
+                            <input
+                              required
+                              placeholder="Ex: Salário, Vendas..."
+                              value={descricaoEntrada}
+                              onChange={(e) => setDescricaoEntrada(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>VALOR (R$)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              required
+                              placeholder="0.00"
+                              value={valorEntrada}
+                              onChange={(e) => setValorEntrada(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>CONTA DE DESTINO</label>
+                            <select
+                              required
+                              value={contaEntrada}
+                              onChange={(e) => setContaEntrada(e.target.value)}
+                            >
+                              <option value="">Selecione...</option>
+                              {contas.map((c, idx) => (
+                                <option key={c.id ?? idx} value={idx}>
+                                  {c.name} ({moeda(c.balance)})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <button type="submit" className="primary-button">
+                            Salvar entrada
+                          </button>
+                        </form>
+                      </div>
+
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>HISTÓRICO</span>
+                            <h2>Entradas ({entradas.length})</h2>
+                          </div>
+                        </div>
+                        <div className="list">
+                          {entradas.map((item) => (
+                            <div key={item.id} className="list-item">
+                              <div>
+                                <strong>{item.description}</strong>
+                                <small>
+                                  {formatarData(item.income_date)} •{" "}
+                                  {nomeContaPorId(item.account_id)}
+                                </small>
+                              </div>
+                              <strong style={{ color: "#4ade80" }}>
+                                + {exibirValor(item.amount)}
+                              </strong>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {active === "Saídas" && (
+                    <>
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>LANÇAMENTO</span>
+                            <h2>Registrar saída</h2>
+                          </div>
+                        </div>
+                        <form className="form-grid" onSubmit={criarDespesa}>
+                          <div className="field">
+                            <label>DESCRIÇÃO</label>
+                            <input
+                              required
+                              placeholder="Ex: Mercado, Combustível..."
+                              value={descricaoDespesa}
+                              onChange={(e) => setDescricaoDespesa(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>VALOR (R$)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              required
+                              placeholder="0.00"
+                              value={valorDespesa}
+                              onChange={(e) => setValorDespesa(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>CONTA</label>
+                            <select
+                              required
+                              value={contaDespesa}
+                              onChange={(e) => setContaDespesa(e.target.value)}
+                            >
+                              <option value="">Selecione...</option>
+                              {contas.map((c, idx) => (
+                                <option key={c.id ?? idx} value={idx}>
+                                  {c.name} ({moeda(c.balance)})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <button type="submit" className="primary-button">
+                            Salvar saída
+                          </button>
+                        </form>
+                      </div>
+
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>HISTÓRICO</span>
+                            <h2>Saídas ({despesas.length})</h2>
+                          </div>
+                        </div>
+                        <div className="list">
+                          {despesas.map((item) => (
+                            <div key={item.id} className="list-item">
+                              <div>
+                                <strong>{item.description}</strong>
+                                <small>
+                                  {formatarData(item.expense_date)} •{" "}
+                                  {nomeContaPorId(item.account_id)}
+                                </small>
+                              </div>
+                              <strong style={{ color: "#f87171" }}>
+                                - {exibirValor(item.amount)}
+                              </strong>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {active === "Contas a pagar" && (
+                    <>
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>AGENDAMENTO</span>
+                            <h2>Nova conta a pagar</h2>
+                          </div>
+                        </div>
+                        <form className="form-grid" onSubmit={criarContaPagar}>
+                          <div className="field">
+                            <label>DESCRIÇÃO</label>
+                            <input
+                              required
+                              placeholder="Ex: Energia, Internet..."
+                              value={descricaoContaPagar}
+                              onChange={(e) => setDescricaoContaPagar(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>VALOR (R$)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              required
+                              placeholder="0.00"
+                              value={valorContaPagar}
+                              onChange={(e) => setValorContaPagar(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>VENCIMENTO</label>
+                            <input
+                              type="date"
+                              required
+                              value={vencimentoContaPagar}
+                              onChange={(e) => setVencimentoContaPagar(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>CONTA</label>
+                            <select
+                              required
+                              value={contaPagarSelecionada}
+                              onChange={(e) => setContaPagarSelecionada(e.target.value)}
+                            >
+                              <option value="">Selecione...</option>
+                              {contas.map((c, idx) => (
+                                <option key={c.id ?? idx} value={idx}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <button type="submit" className="primary-button">
+                            Adicionar
+                          </button>
+                        </form>
+                      </div>
+
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>CONTAS</span>
+                            <h2>Contas a pagar ({contasAvulsas.length})</h2>
+                          </div>
+                        </div>
+                        <div className="list">
+                          {contasAvulsas.map((c) => (
+                            <div key={c.id} className="list-item">
+                              <div>
+                                <strong>{c.description}</strong>
+                                <small>
+                                  Vencimento: {formatarData(c.due_date)} •{" "}
+                                  {nomeContaPorId(c.account_id)}
+                                </small>
+                              </div>
+                              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                                <strong>{exibirValor(c.amount)}</strong>
+                                <span
+                                  className={`badge ${
+                                    c.status === "paid" ? "badge-paid" : "badge-pending"
+                                  }`}
+                                >
+                                  {c.status === "paid" ? "Paga" : "Pendente"}
+                                </span>
+                                {c.status !== "paid" && (
+                                  <button
+                                    type="button"
+                                    className="primary-button"
+                                    onClick={() => pagarConta(c)}
+                                  >
+                                    Pagar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {active === "Compromissos" && (
+                    <>
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>RECORRENTES</span>
+                            <h2>
+                              {compromissoEditando
+                                ? "Editar compromisso"
+                                : "Novo compromisso"}
+                            </h2>
+                          </div>
+                        </div>
+                        <form className="form-grid" onSubmit={criarCompromisso}>
+                          <div className="field">
+                            <label>DESCRIÇÃO</label>
+                            <input
+                              required
+                              placeholder="Ex: Aluguel, Academia..."
+                              value={descricaoCompromisso}
+                              onChange={(e) => setDescricaoCompromisso(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>VALOR (R$)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              required
+                              placeholder="0.00"
+                              value={valorCompromisso}
+                              onChange={(e) => setValorCompromisso(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>VENCIMENTO</label>
+                            <input
+                              type="date"
+                              required
+                              value={vencimentoCompromisso}
+                              onChange={(e) => setVencimentoCompromisso(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>CONTA</label>
+                            <select
+                              required
+                              value={contaCompromissoSelecionada}
+                              onChange={(e) =>
+                                setContaCompromissoSelecionada(e.target.value)
+                              }
+                            >
+                              <option value="">Selecione...</option>
+                              {contas.map((c, idx) => (
+                                <option key={c.id ?? idx} value={idx}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button type="submit" className="primary-button">
+                              {compromissoEditando ? "Salvar" : "Cadastrar"}
+                            </button>
+                            {compromissoEditando && (
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={cancelarEdicaoCompromisso}
+                              >
+                                Cancelar
+                              </button>
+                            )}
+                          </div>
+                        </form>
+                      </div>
+
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>LISTA</span>
+                            <h2>Compromissos ({compromissos.length})</h2>
+                          </div>
+                        </div>
+                        <div className="list">
+                          {compromissos.map((c) => (
+                            <div key={c.id} className="list-item">
+                              <div>
+                                <strong>{c.description}</strong>
+                                <small>
+                                  Vencimento: {formatarData(c.due_date)} •{" "}
+                                  {nomeContaPorId(c.account_id)}
+                                </small>
+                              </div>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                <strong>{exibirValor(c.amount)}</strong>
+                                <span
+                                  className={`badge ${
+                                    c.status === "paid" ? "badge-paid" : "badge-pending"
+                                  }`}
+                                >
+                                  {c.status === "paid" ? "Pago" : "Pendente"}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="secondary-button"
+                                  onClick={() => editarCompromisso(c)}
+                                >
+                                  Editar
+                                </button>
+                                {c.status !== "paid" && (
+                                  <button
+                                    type="button"
+                                    className="primary-button"
+                                    onClick={() => pagarConta(c)}
+                                  >
+                                    Pagar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {active === "Cartões" && (
+                    <>
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>CARTÃO DE CRÉDITO</span>
+                            <h2>
+                              {cartaoEditando ? "Editar cartão" : "Adicionar cartão"}
+                            </h2>
+                          </div>
+                        </div>
+                        <form
+                          className="form-grid"
+                          onSubmit={cartaoEditando ? salvarEdicaoCartao : criarCartao}
+                        >
+                          <div className="field">
+                            <label>NOME DO CARTÃO</label>
+                            <input
+                              required
+                              placeholder="Ex: Nubank Roxinho"
+                              value={nomeCartao}
+                              onChange={(e) => setNomeCartao(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>BANCO</label>
+                            <input
+                              placeholder="Ex: Nubank"
+                              value={bancoCartao}
+                              onChange={(e) => setBancoCartao(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>ÚLTIMOS 4 DÍGITOS</label>
+                            <input
+                              maxLength={4}
+                              placeholder="1234"
+                              value={ultimosQuatro}
+                              onChange={(e) => setUltimosQuatro(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>LIMITE TOTAL (R$)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              required
+                              placeholder="0.00"
+                              value={limiteCartao}
+                              onChange={(e) => setLimiteCartao(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>DIA FECHAMENTO</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="31"
+                              placeholder="Ex: 5"
+                              value={fechamentoCartao}
+                              onChange={(e) => setFechamentoCartao(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>DIA VENCIMENTO</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="31"
+                              placeholder="Ex: 12"
+                              value={vencimentoCartao}
+                              onChange={(e) => setVencimentoCartao(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>BANDEIRA</label>
+                            <input
+                              placeholder="Mastercard / Visa"
+                              value={bandeiraCartao}
+                              onChange={(e) => setBandeiraCartao(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>COR</label>
+                            <input
+                              type="color"
+                              value={corCartao}
+                              onChange={(e) => setCorCartao(e.target.value)}
+                              style={{ height: 44, padding: 4 }}
+                            />
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button type="submit" className="primary-button">
+                              {cartaoEditando ? "Salvar alterações" : "Salvar cartão"}
+                            </button>
+                            {cartaoEditando && (
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={cancelarEdicaoCartao}
+                              >
+                                Cancelar
+                              </button>
+                            )}
+                          </div>
+                        </form>
+                      </div>
+
+                      {cartoes.length > 0 && (
+                        <div className="panel">
+                          <div className="panel-title">
+                            <div>
+                              <span>MEUS CARTÕES</span>
+                              <h2>Cartões ativos ({cartoes.length})</h2>
+                            </div>
+                          </div>
+                          <div className="card-grid">
+                            {cartoes.map((card) => {
+                              const limite = Number(card.credit_limit || 0);
+                              const disp = Number(card.available_limit || 0);
+                              const usado = Math.max(0, limite - disp);
+                              const pct = limite > 0 ? Math.min(100, (usado / limite) * 100) : 0;
+
+                              return (
+                                <div
+                                  key={card.id}
+                                  className="credit-card-box"
+                                  style={{ borderTop: `3px solid ${card.color || "#fff"}` }}
+                                >
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <strong>{card.name}</strong>
+                                    <button
+                                      type="button"
+                                      className="secondary-button"
+                                      onClick={() => iniciarEdicaoCartao(card)}
+                                    >
+                                      Editar
+                                    </button>
+                                  </div>
+                                  <small style={{ color: "#888" }}>
+                                    {card.bank_name || "Banco"}{" "}
+                                    {card.last_four_digits ? `•••• ${card.last_four_digits}` : ""}
+                                  </small>
+                                  <div className="progress-bar">
+                                    <div className="progress-fill" style={{ width: `${pct}%` }} />
+                                  </div>
+                                  <div style={{ fontSize: 12, color: "#aaa", display: "grid", gap: 4 }}>
+                                    <div>Disponível: <strong>{exibirValor(disp)}</strong></div>
+                                    <div>Limite total: {exibirValor(limite)}</div>
+                                    <div>
+                                      Fecha dia {card.closing_day || "-"} • Vence dia {card.due_day || "-"}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>NOVA COMPRA</span>
+                            <h2>Lançar compra no cartão</h2>
+                          </div>
+                        </div>
+                        <form className="form-grid" onSubmit={criarCompra}>
+                          <div className="field">
+                            <label>CARTÃO</label>
+                            <select
+                              required
+                              value={cartaoCompra}
+                              onChange={(e) => setCartaoCompra(e.target.value)}
+                            >
+                              <option value="">Selecione...</option>
+                              {cartoes.map((card) => (
+                                <option key={card.id} value={getCardId(card)}>
+                                  {card.name} (Disp: {moeda(card.available_limit)})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="field">
+                            <label>DESCRIÇÃO</label>
+                            <input
+                              required
+                              placeholder="Ex: Supermercado, Celular..."
+                              value={descricaoCompra}
+                              onChange={(e) => setDescricaoCompra(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>VALOR TOTAL (R$)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              required
+                              placeholder="0.00"
+                              value={valorCompra}
+                              onChange={(e) => setValorCompra(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>DATA DA COMPRA</label>
+                            <input
+                              type="date"
+                              required
+                              value={dataCompra}
+                              onChange={(e) => setDataCompra(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>PARCELAS</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="48"
+                              value={totalParcelasCompra}
+                              onChange={(e) => setTotalParcelasCompra(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>OBSERVAÇÃO</label>
+                            <input
+                              placeholder="Opcional"
+                              value={observacaoCompra}
+                              onChange={(e) => setObservacaoCompra(e.target.value)}
+                            />
+                          </div>
+                          <button type="submit" className="primary-button">
+                            Registrar compra
+                          </button>
+                        </form>
+                      </div>
+
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>FATURAS</span>
+                            <h2>Faturas ({faturas.length})</h2>
+                          </div>
+                        </div>
+                        <div className="list">
+                          {faturas.map((f) => {
+                            const restante = Math.max(
+                              0,
+                              Number(f.total_amount || 0) - Number(f.paid_amount || 0)
+                            );
+                            return (
+                              <div key={f.id} className="list-item">
+                                <div>
+                                  <strong>
+                                    {nomeCartaoPorId(f.card_id)} — Venc. {formatarData(f.due_date)}
+                                  </strong>
+                                  <small>
+                                    Total: {moeda(f.total_amount)} • Pago: {moeda(f.paid_amount)} •
+                                    Restante: {moeda(restante)}
+                                  </small>
+                                </div>
+                                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                  <span
+                                    className={`badge ${
+                                      f.status === "paid" ? "badge-paid" : "badge-pending"
+                                    }`}
+                                  >
+                                    {f.status === "paid" ? "Paga" : "Aberta"}
+                                  </span>
+                                  {f.status !== "paid" && (
+                                    <>
+                                      <select
+                                        style={{ width: 170 }}
+                                        value={contasFaturaSelecionadas[f.id] || ""}
+                                        onChange={(e) =>
+                                          setContasFaturaSelecionadas((prev) => ({
+                                            ...prev,
+                                            [f.id]: e.target.value,
+                                          }))
+                                        }
+                                      >
+                                        <option value="">Conta pagadora...</option>
+                                        {contas.map((c) => (
+                                          <option key={c.id ?? c.uuid} value={c.id ?? c.uuid}>
+                                            {c.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <button
+                                        type="button"
+                                        className="primary-button"
+                                        onClick={() => pagarFatura(f)}
+                                      >
+                                        Pagar fatura
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>PARCELAS</span>
+                            <h2>Parcelas ({parcelas.length})</h2>
+                          </div>
+                        </div>
+                        <div className="list">
+                          {parcelas.map((p) => {
+                            const compraRel = compras.find((c) => c.id === p.purchase_id);
+                            return (
+                              <div key={p.id} className="list-item">
+                                <div>
+                                  <strong>
+                                    {compraRel?.description || "Compra"} ({p.installment_number}/
+                                    {p.total_installments})
+                                  </strong>
+                                  <small>
+                                    Vencimento: {formatarData(p.due_date)} • Valor: {moeda(p.amount)}
+                                  </small>
+                                </div>
+                                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                  <span
+                                    className={`badge ${
+                                      p.status === "paid" ? "badge-paid" : "badge-pending"
+                                    }`}
+                                  >
+                                    {p.status === "paid" ? "Paga" : "Pendente"}
+                                  </span>
+                                  {p.status !== "paid" && (
+                                    <>
+                                      <select
+                                        style={{ width: 170 }}
+                                        value={contasParcelaSelecionadas[p.id] || ""}
+                                        onChange={(e) =>
+                                          setContasParcelaSelecionadas((prev) => ({
+                                            ...prev,
+                                            [p.id]: e.target.value,
+                                          }))
+                                        }
+                                      >
+                                        <option value="">Conta pagadora...</option>
+                                        {contas.map((c) => (
+                                          <option key={c.id ?? c.uuid} value={c.id ?? c.uuid}>
+                                            {c.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <button
+                                        type="button"
+                                        className="secondary-button"
+                                        onClick={() => pagarParcela(p)}
+                                      >
+                                        Pagar parcela
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {active === "Metas" && (
+                    <>
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>OBJETIVOS</span>
+                            <h2>Nova meta financeira</h2>
+                          </div>
+                        </div>
+                        <form className="form-grid" onSubmit={adicionarMeta}>
+                          <div className="field">
+                            <label>TÍTULO DA META</label>
+                            <input
+                              required
+                              placeholder="Ex: Reserva de emergência, Moto..."
+                              value={tituloMeta}
+                              onChange={(e) => setTituloMeta(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>VALOR OBJETIVO (R$)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              required
+                              placeholder="0.00"
+                              value={valorAlvoMeta}
+                              onChange={(e) => setValorAlvoMeta(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>VALOR JÁ GUARDADO (R$)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={valorAtualMeta}
+                              onChange={(e) => setValorAtualMeta(e.target.value)}
+                            />
+                          </div>
+                          <button type="submit" className="primary-button">
+                            Criar meta
+                          </button>
+                        </form>
+                      </div>
+
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>ACOMPANHAMENTO</span>
+                            <h2>Minhas metas ({metas.length})</h2>
+                          </div>
+                        </div>
+                        <div className="list">
+                          {metas.map((m) => {
+                            const pct =
+                              m.alvo > 0 ? Math.min(100, (m.atual / m.alvo) * 100) : 0;
+                            return (
+                              <div key={m.id} className="list-item" style={{ display: "block" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                  <strong>{m.titulo}</strong>
+                                  <span>{pct.toFixed(1)}%</span>
+                                </div>
+                                <div className="progress-bar">
+                                  <div className="progress-fill" style={{ width: `${pct}%` }} />
+                                </div>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                                  <small>
+                                    {moeda(m.atual)} de {moeda(m.alvo)}
+                                  </small>
+                                  <div style={{ display: "flex", gap: 6 }}>
+                                    <button
+                                      type="button"
+                                      className="secondary-button"
+                                      onClick={() => atualizarMeta(m.id, 100)}
+                                    >
+                                      + R$ 100
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="secondary-button"
+                                      onClick={() => removerMeta(m.id)}
+                                    >
+                                      Excluir
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {active === "Relatórios" && (
+                    <div className="panel">
+                      <div className="panel-title">
+                        <div>
+                          <span>BALANÇO GERAL</span>
+                          <h2>Resumo financeiro</h2>
+                        </div>
+                      </div>
+                      <div className="stats">
+                        <div className="stat-card">
+                          <span>TOTAL DE ENTRADAS</span>
+                          <strong style={{ color: "#4ade80" }}>
+                            {exibirValor(totalEntradas)}
+                          </strong>
+                        </div>
+                        <div className="stat-card">
+                          <span>TOTAL DE SAÍDAS</span>
+                          <strong style={{ color: "#f87171" }}>
+                            {exibirValor(totalSaidas)}
+                          </strong>
+                        </div>
+                        <div className="stat-card">
+                          <span>SALDO LÍQUIDO (ENTRADAS - SAÍDAS)</span>
+                          <strong>{exibirValor(totalEntradas - totalSaidas)}</strong>
+                        </div>
+                      </div>
+                      <div className="list" style={{ marginTop: 14 }}>
+                        <div className="list-item">
+                          <div>
+                            <strong>Total em contas bancárias</strong>
+                            <small>{contas.length} conta(s) cadastrada(s)</small>
+                          </div>
+                          <strong>{exibirValor(saldoTotal)}</strong>
+                        </div>
+                        <div className="list-item">
+                          <div>
+                            <strong>Limite total de crédito</strong>
+                            <small>{cartoes.length} cartão(ões)</small>
+                          </div>
+                          <strong>
+                            {exibirValor(
+                              cartoes.reduce((acc, c) => acc + Number(c.credit_limit || 0), 0)
+                            )}
+                          </strong>
+                        </div>
+                        <div className="list-item">
+                          <div>
+                            <strong>Contas/Compromissos pendentes</strong>
+                            <small>
+                              {contasPagar.filter((c) => c.status !== "paid").length} item(ns)
+                            </small>
+                          </div>
+                          <strong>
+                            {exibirValor(
+                              contasPagar
+                                .filter((c) => c.status !== "paid")
+                                .reduce((acc, c) => acc + Number(c.amount || 0), 0)
+                            )}
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              </main>
+            </div>
+          </div>
+        );
+      }
+
+      function App() {
+        const [session, setSession] = useState(null);
+        const [carregandoSessao, setCarregandoSessao] = useState(true);
+
+        useEffect(() => {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            setCarregandoSessao(false);
+          });
+
+          const {
+            data: { subscription },
+          } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+          });
+
+          return () => subscription.unsubscribe();
+        }, []);
+
+        async function sair() {
+          await supabase.auth.signOut();
+          setSession(null);
+        }
+
+        if (carregandoSessao) {
+          return (
+            <div className="login-wrapper">
+              <div style={{ color: "#777" }} translate="no">Carregando OR finance...</div>
+            </div>
+          );
+        }
+
+        if (!session) {
+          return <Login onLogin={setSession} />;
+        }
+
+        return (
+          <Painel
+            email={session.user?.email}
+            userId={session.user?.id}
+            sair={sair}
+          />
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>
