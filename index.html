@@ -662,22 +662,6 @@
     </div>
 
     <script>
-      window.__PWA_DIAG__ = {
-        protocol: window.location.protocol,
-        hostname: window.location.hostname,
-        pathname: window.location.pathname,
-        isSecureContext: Boolean(window.isSecureContext),
-        hasServiceWorkerApi: "serviceWorker" in navigator,
-        swStatus: "pendente",
-        manifestStatus: "pendente",
-        icon192Ok: false,
-        icon512Ok: false,
-        displayMode:
-          window.matchMedia && window.matchMedia("(display-mode: standalone)").matches
-            ? "standalone"
-            : "browser"
-      };
-
       window.addEventListener("error", function (event) {
         var el = document.getElementById("boot-status");
         if (el) {
@@ -747,8 +731,6 @@
 
         var icon192 = criarIconePng(192);
         var icon512 = criarIconePng(512);
-        window.__PWA_DIAG__.icon192Ok = Boolean(icon192);
-        window.__PWA_DIAG__.icon512Ok = Boolean(icon512);
 
         var appleIconLink = document.getElementById("pwa-apple-icon");
         if (appleIconLink && icon192) {
@@ -787,9 +769,6 @@
           manifestLink.href =
             "data:application/manifest+json;charset=utf-8," +
             encodeURIComponent(JSON.stringify(manifestObj));
-          window.__PWA_DIAG__.manifestStatus = "injetado (data:)";
-        } else {
-          window.__PWA_DIAG__.manifestStatus = "falhou (sem ícones)";
         }
 
         var isSecure =
@@ -800,7 +779,7 @@
 
         if (isSecure && "serviceWorker" in navigator) {
           var swCode = [
-            "const CACHE_NAME = 'or-finance-pwa-v3';",
+            "const CACHE_NAME = 'or-finance-pwa-v4';",
             "self.addEventListener('install', (event) => {",
             "  self.skipWaiting();",
             "  event.waitUntil(caches.open(CACHE_NAME));",
@@ -830,35 +809,13 @@
           var swDataUrl =
             "data:application/javascript;charset=utf-8," + encodeURIComponent(swCode);
 
-          navigator.serviceWorker
-            .register(swDataUrl)
-            .then(function () {
-              window.__PWA_DIAG__.swStatus = "registrado (data:)";
-            })
-            .catch(function (errData) {
-              try {
-                var swBlob = new Blob([swCode], { type: "application/javascript" });
-                var swBlobUrl = URL.createObjectURL(swBlob);
-                navigator.serviceWorker
-                  .register(swBlobUrl)
-                  .then(function () {
-                    window.__PWA_DIAG__.swStatus = "registrado (blob:)";
-                  })
-                  .catch(function (errBlob) {
-                    window.__PWA_DIAG__.swStatus =
-                      "bloqueado (" +
-                      (errBlob && errBlob.message ? errBlob.message : String(errBlob)) +
-                      " | data: " +
-                      (errData && errData.message ? errData.message : String(errData)) +
-                      ")";
-                  });
-              } catch (e) {
-                window.__PWA_DIAG__.swStatus =
-                  "erro (" + (e && e.message ? e.message : String(e)) + ")";
-              }
-            });
-        } else {
-          window.__PWA_DIAG__.swStatus = "contexto não seguro (" + window.location.protocol + ")";
+          navigator.serviceWorker.register(swDataUrl).catch(function () {
+            try {
+              var swBlob = new Blob([swCode], { type: "application/javascript" });
+              var swBlobUrl = URL.createObjectURL(swBlob);
+              navigator.serviceWorker.register(swBlobUrl).catch(function () {});
+            } catch (e) {}
+          });
         }
       })();
     </script>
@@ -1154,7 +1111,6 @@
         const [modalMovimentacoes, setModalMovimentacoes] = useState(false);
         const [modalConfiguracoes, setModalConfiguracoes] = useState(false);
         const [mostrarManual, setMostrarManual] = useState(false);
-        const [mostrarDiagnostico, setMostrarDiagnostico] = useState(false);
 
         const [deferredPrompt, setDeferredPrompt] = useState(null);
         const [appInstalado, setAppInstalado] = useState(() => {
@@ -1200,9 +1156,8 @@
             return;
           }
 
-          setMostrarDiagnostico(true);
           alert(
-            "O navegador ainda não disparou o evento automático de instalação (beforeinstallprompt).\n\nVeja o 'Diagnóstico PWA' dentro de Configurações para ver o status do Service Worker e do manifesto, ou use o menu do navegador (⋮) para instalar."
+            "Para instalar o OR finance como aplicativo, abra o menu do navegador (⋮) e toque em 'Instalar aplicativo' ou 'Adicionar à tela inicial'."
           );
         }
 
@@ -2417,7 +2372,6 @@
         };
 
         const exibirValor = (v) => (mostrarSaldo ? moeda(v) : "R$ ••••••");
-        const diag = window.__PWA_DIAG__ || {};
 
         return (
           <div className="app">
@@ -2574,51 +2528,7 @@
                         >
                           📖 {mostrarManual ? "Ocultar manual de uso" : "Manual de uso"}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setMostrarDiagnostico((prev) => !prev)}
-                        >
-                          🩺 {mostrarDiagnostico ? "Ocultar diagnóstico PWA" : "Diagnóstico PWA"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMostrarSaldo((prev) => !prev)}
-                        >
-                          {mostrarSaldo ? "Ocultar valores na tela" : "Mostrar valores na tela"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setModalConfiguracoes(false);
-                            setActive("Transferências");
-                          }}
-                        >
-                          ⇄ Transferir entre contas
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            setModalConfiguracoes(false);
-                            await criarContaDinheiroEspecie();
-                          }}
-                        >
-                          💵 Criar / abrir conta Dinheiro em espécie
-                        </button>
                       </div>
-
-                      {mostrarDiagnostico && (
-                        <div className="settings-section">
-                          <div className="manual-box">
-                            <div><strong>Modo atual:</strong> {diag.displayMode || "browser"}</div>
-                            <div><strong>Origem / Protocolo:</strong> {diag.protocol} // {diag.hostname}</div>
-                            <div><strong>Contexto seguro (HTTPS/localhost):</strong> {diag.isSecureContext ? "Sim" : "Não"}</div>
-                            <div><strong>Ícones PNG (192 / 512):</strong> {diag.icon192Ok ? "OK" : "Falha"} / {diag.icon512Ok ? "OK" : "Falha"}</div>
-                            <div><strong>Manifest:</strong> {diag.manifestStatus}</div>
-                            <div><strong>Service Worker:</strong> {diag.swStatus}</div>
-                            <div><strong>Prompt automático disponível:</strong> {deferredPrompt ? "Sim" : "Não (navegador bloqueou ou ainda não liberou)"}</div>
-                          </div>
-                        </div>
-                      )}
 
                       {mostrarManual && (
                         <div className="settings-section">
