@@ -680,33 +680,53 @@
       });
 
       (function configurarPwaInline() {
+        function tracarRetanguloArredondado(ctx, x, y, w, h, r) {
+          var radius = Math.min(r, w / 2, h / 2);
+          ctx.beginPath();
+          ctx.moveTo(x + radius, y);
+          ctx.arcTo(x + w, y, x + w, y + h, radius);
+          ctx.arcTo(x + w, y + h, x, y + h, radius);
+          ctx.arcTo(x, y + h, x, y, radius);
+          ctx.arcTo(x, y, x + w, y, radius);
+          ctx.closePath();
+        }
+
         function criarIconePng(tamanho) {
-          var canvas = document.createElement("canvas");
-          canvas.width = tamanho;
-          canvas.height = tamanho;
-          var ctx = canvas.getContext("2d");
-          if (!ctx) return "";
+          try {
+            var canvas = document.createElement("canvas");
+            canvas.width = tamanho;
+            canvas.height = tamanho;
+            var ctx = canvas.getContext("2d");
+            if (!ctx) return "";
 
-          var raio = Math.round(tamanho * 0.22);
-          ctx.fillStyle = "#050505";
-          ctx.beginPath();
-          ctx.roundRect(0, 0, tamanho, tamanho, raio);
-          ctx.fill();
+            var raio = Math.round(tamanho * 0.22);
+            ctx.fillStyle = "#050505";
+            tracarRetanguloArredondado(ctx, 0, 0, tamanho, tamanho, raio);
+            ctx.fill();
 
-          var borda = Math.max(2, Math.round(tamanho * 0.03));
-          ctx.strokeStyle = "#ffffff";
-          ctx.lineWidth = borda;
-          ctx.beginPath();
-          ctx.roundRect(borda * 2, borda * 2, tamanho - borda * 4, tamanho - borda * 4, Math.max(4, raio - borda));
-          ctx.stroke();
+            var borda = Math.max(2, Math.round(tamanho * 0.03));
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = borda;
+            tracarRetanguloArredondado(
+              ctx,
+              borda * 2,
+              borda * 2,
+              tamanho - borda * 4,
+              tamanho - borda * 4,
+              Math.max(4, raio - borda)
+            );
+            ctx.stroke();
 
-          ctx.fillStyle = "#ffffff";
-          ctx.font = "800 " + Math.round(tamanho * 0.34) + "px Inter, Arial, sans-serif";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText("OR", tamanho / 2, tamanho * 0.52);
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "800 " + Math.round(tamanho * 0.34) + "px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("OR", tamanho / 2, tamanho * 0.52);
 
-          return canvas.toDataURL("image/png");
+            return canvas.toDataURL("image/png");
+          } catch (e) {
+            return "";
+          }
         }
 
         var icon192 = criarIconePng(192);
@@ -718,46 +738,63 @@
         }
 
         var manifestLink = document.getElementById("pwa-manifest");
-        if (manifestLink && icon192 && icon512) {
-          var startUrl = window.location.href.split("#")[0].split("?")[0];
+        var iconesManifest = [];
+        if (icon192) {
+          iconesManifest.push({ src: icon192, sizes: "192x192", type: "image/png" });
+        }
+        if (icon512) {
+          iconesManifest.push({ src: icon512, sizes: "512x512", type: "image/png" });
+        }
+
+        if (manifestLink && iconesManifest.length > 0) {
+          var currentUrl = window.location.href.split("#")[0].split("?")[0];
+          var scopeUrl = currentUrl.endsWith("/")
+            ? currentUrl
+            : currentUrl.substring(0, currentUrl.lastIndexOf("/") + 1);
+
           var manifestObj = {
             name: "OR finance",
             short_name: "OR finance",
             description: "Organizador financeiro pessoal",
-            start_url: startUrl,
-            scope: startUrl.endsWith("/") ? startUrl : startUrl.substring(0, startUrl.lastIndexOf("/") + 1),
+            id: currentUrl,
+            start_url: currentUrl,
+            scope: scopeUrl,
             display: "standalone",
+            display_override: ["standalone", "fullscreen"],
             orientation: "portrait",
             background_color: "#050505",
             theme_color: "#050505",
-            icons: [
-              {
-                src: icon192,
-                sizes: "192x192",
-                type: "image/png",
-                purpose: "any maskable"
-              },
-              {
-                src: icon512,
-                sizes: "512x512",
-                type: "image/png",
-                purpose: "any maskable"
-              }
-            ]
+            icons: iconesManifest
           };
-          manifestLink.href = "data:application/manifest+json;charset=utf-8," + encodeURIComponent(JSON.stringify(manifestObj));
+
+          try {
+            var manifestBlob = new Blob([JSON.stringify(manifestObj)], {
+              type: "application/manifest+json"
+            });
+            manifestLink.href = URL.createObjectURL(manifestBlob);
+          } catch (e) {
+            manifestLink.href =
+              "data:application/manifest+json;charset=utf-8," +
+              encodeURIComponent(JSON.stringify(manifestObj));
+          }
         }
 
-        var isSecure = window.location.protocol === "https:" || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        var isSecure =
+          window.location.protocol === "https:" ||
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1";
+
         if (isSecure && "serviceWorker" in navigator) {
           var swCode = [
-            "const CACHE_NAME = 'or-finance-pwa-v1';",
+            "const CACHE_NAME = 'or-finance-pwa-v2';",
             "self.addEventListener('install', (event) => {",
             "  self.skipWaiting();",
             "  event.waitUntil(caches.open(CACHE_NAME));",
             "});",
             "self.addEventListener('activate', (event) => {",
-            "  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))));",
+            "  event.waitUntil(",
+            "    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))",
+            "  );",
             "  self.clients.claim();",
             "});",
             "self.addEventListener('fetch', (event) => {",
@@ -765,7 +802,7 @@
             "  event.respondWith(",
             "    fetch(event.request)",
             "      .then((response) => {",
-            "        if (response && response.status === 200 && response.type === 'basic') {",
+            "        if (response && response.status === 200) {",
             "          const clone = response.clone();",
             "          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));",
             "        }",
@@ -776,9 +813,15 @@
             "});"
           ].join("\n");
 
-          var swUrl = "data:application/javascript;charset=utf-8," + encodeURIComponent(swCode);
-          navigator.serviceWorker.register(swUrl).catch(function (err) {
-            console.warn("Service Worker inline:", err);
+          var swBlob = new Blob([swCode], { type: "application/javascript" });
+          var swBlobUrl = URL.createObjectURL(swBlob);
+
+          navigator.serviceWorker.register(swBlobUrl).catch(function () {
+            var swDataUrl =
+              "data:application/javascript;charset=utf-8," + encodeURIComponent(swCode);
+            navigator.serviceWorker.register(swDataUrl).catch(function (err) {
+              console.warn("Service Worker inline:", err);
+            });
           });
         }
       })();
@@ -1078,7 +1121,10 @@
 
         const [deferredPrompt, setDeferredPrompt] = useState(null);
         const [appInstalado, setAppInstalado] = useState(() => {
-          return window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+          return (
+            (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+            Boolean(window.navigator.standalone)
+          );
         });
 
         const [novaSenha, setNovaSenha] = useState("");
