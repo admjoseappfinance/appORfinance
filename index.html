@@ -176,6 +176,12 @@
         font-weight: 700;
       }
 
+      .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
       .profile {
         width: 38px;
         height: 38px;
@@ -186,6 +192,11 @@
         place-items: center;
         color: #aaa;
         font-size: 12px;
+      }
+
+      .profile:hover {
+        border-color: #666;
+        color: #fff;
       }
 
       .mobile-menu {
@@ -260,6 +271,20 @@
         color: #fff;
       }
 
+      .danger-button {
+        padding: 10px 14px;
+        border: 1px solid #5c1f1f;
+        border-radius: 9px;
+        background: #240d0d;
+        color: #fca5a5;
+        font-weight: 600;
+      }
+
+      .danger-button:hover {
+        background: #361212;
+        color: #fff;
+      }
+
       .modal-backdrop {
         position: fixed;
         inset: 0;
@@ -272,7 +297,9 @@
 
       .modal-card {
         width: 100%;
-        max-width: 380px;
+        max-width: 440px;
+        max-height: 90vh;
+        overflow-y: auto;
         padding: 24px;
         border: 1px solid #262626;
         border-radius: 16px;
@@ -312,6 +339,12 @@
       .option-btn:hover {
         background: #1c1c1c;
         border-color: #fff;
+      }
+
+      .settings-section {
+        border-top: 1px solid #1e1e1e;
+        padding-top: 16px;
+        margin-top: 16px;
       }
 
       .stats {
@@ -358,6 +391,8 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
       }
 
       .panel h2 {
@@ -640,6 +675,7 @@
         "Contas",
         "Entradas",
         "Saídas",
+        "Transferências",
         "Contas a pagar",
         "Compromissos",
         "Cartões",
@@ -840,8 +876,16 @@
         const [compras, setCompras] = useState([]);
         const [parcelas, setParcelas] = useState([]);
         const [faturas, setFaturas] = useState([]);
+        const [transferencias, setTransferencias] = useState(() => {
+          try {
+            return JSON.parse(localStorage.getItem(`orfinance_transfers_${userId}`) || "[]");
+          } catch {
+            return [];
+          }
+        });
 
         const [nomeConta, setNomeConta] = useState("");
+        const [tipoConta, setTipoConta] = useState("corrente");
         const [saldoConta, setSaldoConta] = useState("");
 
         const [valorEntrada, setValorEntrada] = useState("");
@@ -851,6 +895,11 @@
         const [valorDespesa, setValorDespesa] = useState("");
         const [descricaoDespesa, setDescricaoDespesa] = useState("");
         const [contaDespesa, setContaDespesa] = useState("");
+
+        const [contaOrigemTransf, setContaOrigemTransf] = useState("");
+        const [contaDestinoTransf, setContaDestinoTransf] = useState("");
+        const [valorTransf, setValorTransf] = useState("");
+        const [descricaoTransf, setDescricaoTransf] = useState("");
 
         const [descricaoContaPagar, setDescricaoContaPagar] = useState("");
         const [valorContaPagar, setValorContaPagar] = useState("");
@@ -898,10 +947,31 @@
         const [menuAberto, setMenuAberto] = useState(false);
         const [mostrarSaldo, setMostrarSaldo] = useState(true);
         const [modalMovimentacoes, setModalMovimentacoes] = useState(false);
+        const [modalConfiguracoes, setModalConfiguracoes] = useState(false);
+
+        const [novaSenha, setNovaSenha] = useState("");
+        const [confirmarSenha, setConfirmarSenha] = useState("");
+        const [alterandoSenha, setAlterandoSenha] = useState(false);
+        const [resetandoConta, setResetandoConta] = useState(false);
 
         useEffect(() => {
           localStorage.setItem("orfinance_metas", JSON.stringify(metas));
         }, [metas]);
+
+        useEffect(() => {
+          if (!userId) return;
+          try {
+            const salvo = JSON.parse(localStorage.getItem(`orfinance_transfers_${userId}`) || "[]");
+            setTransferencias(salvo);
+          } catch {
+            setTransferencias([]);
+          }
+        }, [userId]);
+
+        function salvarTransferenciasLocal(lista) {
+          if (!userId) return;
+          localStorage.setItem(`orfinance_transfers_${userId}`, JSON.stringify(lista));
+        }
 
         async function carregarContas() {
           const { data, error } = await supabase
@@ -1069,8 +1139,8 @@
 
           const { error } = await supabase.from("accounts").insert({
             user_id: userId,
-            name: nomeConta,
-            type: "corrente",
+            name: nomeConta.trim(),
+            type: tipoConta || "corrente",
             balance: Number(saldoConta) || 0,
           });
 
@@ -1080,9 +1150,41 @@
           }
 
           setNomeConta("");
+          setTipoConta("corrente");
           setSaldoConta("");
           await carregarContas();
           alert("Conta adicionada com sucesso!");
+        }
+
+        async function criarContaDinheiroEspecie() {
+          if (!userId) return;
+          const jaExiste = contas.some(
+            (c) =>
+              String(c.type || "").toLowerCase() === "cash" ||
+              String(c.type || "").toLowerCase() === "dinheiro" ||
+              String(c.name || "").toLowerCase().includes("dinheiro em espécie")
+          );
+          if (jaExiste) {
+            alert("Você já possui uma conta de Dinheiro em espécie.");
+            setActive("Contas");
+            return;
+          }
+
+          const { error } = await supabase.from("accounts").insert({
+            user_id: userId,
+            name: "Dinheiro em espécie",
+            type: "cash",
+            balance: 0,
+          });
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+
+          await carregarContas();
+          setActive("Contas");
+          alert("Conta 'Dinheiro em espécie' criada com sucesso!");
         }
 
         async function criarEntrada(e) {
@@ -1177,6 +1279,160 @@
           await carregarContas();
           await carregarDespesas();
           alert("Despesa adicionada com sucesso!");
+        }
+
+        async function realizarTransferencia(e) {
+          e.preventDefault();
+          const origem = contas[Number(contaOrigemTransf)];
+          const destino = contas[Number(contaDestinoTransf)];
+
+          if (!origem || !destino) {
+            alert("Selecione a conta de origem e a conta de destino.");
+            return;
+          }
+
+          const idOrigem = origem.id ?? origem.uuid;
+          const idDestino = destino.id ?? destino.uuid;
+
+          if (String(idOrigem) === String(idDestino)) {
+            alert("A conta de origem e a conta de destino devem ser diferentes.");
+            return;
+          }
+
+          const valor = Number(valorTransf) || 0;
+          if (valor <= 0) {
+            alert("Informe um valor maior que zero para transferir.");
+            return;
+          }
+
+          const novoSaldoOrigem = Number(origem.balance || 0) - valor;
+          const novoSaldoDestino = Number(destino.balance || 0) + valor;
+
+          const colOrigem = origem.id !== undefined ? "id" : "uuid";
+          const colDestino = destino.id !== undefined ? "id" : "uuid";
+
+          const { error: erroOrigem } = await supabase
+            .from("accounts")
+            .update({ balance: novoSaldoOrigem })
+            .eq(colOrigem, idOrigem);
+
+          if (erroOrigem) {
+            alert(`Erro ao debitar conta de origem: ${erroOrigem.message}`);
+            return;
+          }
+
+          const { error: erroDestino } = await supabase
+            .from("accounts")
+            .update({ balance: novoSaldoDestino })
+            .eq(colDestino, idDestino);
+
+          if (erroDestino) {
+            await supabase
+              .from("accounts")
+              .update({ balance: Number(origem.balance || 0) })
+              .eq(colOrigem, idOrigem);
+            alert(`Erro ao creditar conta de destino: ${erroDestino.message}`);
+            return;
+          }
+
+          const novaTransf = {
+            id: Date.now(),
+            from_account_id: idOrigem,
+            from_account_name: origem.name,
+            to_account_id: idDestino,
+            to_account_name: destino.name,
+            amount: valor,
+            description: descricaoTransf.trim() || "Transferência entre contas",
+            transfer_date: new Date().toISOString().split("T")[0],
+          };
+
+          const atualizadas = [novaTransf, ...transferencias];
+          setTransferencias(atualizadas);
+          salvarTransferenciasLocal(atualizadas);
+
+          setContaOrigemTransf("");
+          setContaDestinoTransf("");
+          setValorTransf("");
+          setDescricaoTransf("");
+
+          await carregarContas();
+          alert("Transferência realizada com sucesso!");
+        }
+
+        async function alterarSenhaUsuario(e) {
+          e.preventDefault();
+          if (novaSenha.length < 6) {
+            alert("A nova senha deve ter pelo menos 6 caracteres.");
+            return;
+          }
+          if (novaSenha !== confirmarSenha) {
+            alert("A confirmação da senha não confere.");
+            return;
+          }
+
+          setAlterandoSenha(true);
+          try {
+            const { error } = await supabase.auth.updateUser({ password: novaSenha });
+            if (error) {
+              alert(`Erro ao alterar senha: ${error.message}`);
+              return;
+            }
+            setNovaSenha("");
+            setConfirmarSenha("");
+            alert("Senha alterada com sucesso!");
+          } finally {
+            setAlterandoSenha(false);
+          }
+        }
+
+        async function resetarContaUsuario() {
+          if (!userId) return;
+
+          const primeiraConfirmacao = window.confirm(
+            "Tem certeza que deseja resetar sua conta no OR finance? Isso vai apagar contas, entradas, saídas, contas a pagar, compromissos, cartões, faturas e metas."
+          );
+          if (!primeiraConfirmacao) return;
+
+          const segundaConfirmacao = window.confirm(
+            "Confirmação final: esta ação não pode ser desfeita. Deseja realmente zerar todos os dados?"
+          );
+          if (!segundaConfirmacao) return;
+
+          setResetandoConta(true);
+          try {
+            await supabase.from("card_installments").delete().eq("user_id", userId);
+            await supabase.from("card_purchases").delete().eq("user_id", userId);
+            await supabase.from("invoices").delete().eq("user_id", userId);
+            await supabase.from("cards").delete().eq("user_id", userId);
+            await supabase.from("bills").delete().eq("user_id", userId);
+            await supabase.from("expenses").delete().eq("user_id", userId);
+            await supabase.from("incomes").delete().eq("user_id", userId);
+            await supabase.from("accounts").delete().eq("user_id", userId);
+
+            setMetas([]);
+            localStorage.removeItem("orfinance_metas");
+            setTransferencias([]);
+            localStorage.removeItem(`orfinance_transfers_${userId}`);
+
+            await Promise.all([
+              carregarContas(),
+              carregarEntradas(),
+              carregarDespesas(),
+              carregarContasPagar(),
+              carregarCartoes(userId),
+              carregarCompras(),
+              carregarParcelas(),
+              carregarFaturas(),
+            ]);
+
+            setModalConfiguracoes(false);
+            setActive("Início");
+            alert("Conta resetada com sucesso!");
+          } catch (err) {
+            alert(`Erro ao resetar conta: ${err?.message || err}`);
+          } finally {
+            setResetandoConta(false);
+          }
         }
 
         async function criarContaPagar(e) {
@@ -1891,6 +2147,13 @@
         const contasAvulsas = contasPagar.filter((c) => !c.recurring);
         const compromissos = contasPagar.filter((c) => c.recurring);
 
+        const labelTipoConta = (tipo) => {
+          const t = String(tipo || "corrente").toLowerCase();
+          if (t === "cash" || t === "dinheiro") return "Dinheiro em espécie";
+          if (t === "poupanca" || t === "poupança") return "Poupança";
+          return "Conta corrente";
+        };
+
         const nomeContaPorId = (id) => {
           const c = contas.find((item) => String(item.id ?? item.uuid) === String(id));
           return c ? c.name : "Conta removida";
@@ -1954,14 +2217,24 @@
                     <span className="eyebrow" translate="no">OR finance</span>
                     <h1>{active}</h1>
                   </div>
-                  <button
-                    type="button"
-                    className="profile"
-                    onClick={() => setMostrarSaldo((prev) => !prev)}
-                    title="Mostrar/ocultar valores"
-                  >
-                    {mostrarSaldo ? "R$" : "**"}
-                  </button>
+                  <div className="topbar-actions">
+                    <button
+                      type="button"
+                      className="profile"
+                      onClick={() => setMostrarSaldo((prev) => !prev)}
+                      title="Mostrar/ocultar valores"
+                    >
+                      {mostrarSaldo ? "R$" : "**"}
+                    </button>
+                    <button
+                      type="button"
+                      className="profile"
+                      onClick={() => setModalConfiguracoes(true)}
+                      title="Configurações"
+                    >
+                      ⚙
+                    </button>
+                  </div>
                 </header>
 
                 {modalMovimentacoes && (
@@ -2003,11 +2276,127 @@
                       <button
                         type="button"
                         className="secondary-button"
+                        style={{ width: "100%", marginBottom: 8 }}
+                        onClick={() => {
+                          setModalMovimentacoes(false);
+                          setActive("Transferências");
+                        }}
+                      >
+                        ⇄ Transferir entre contas
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
                         style={{ width: "100%" }}
                         onClick={() => setModalMovimentacoes(false)}
                       >
                         Cancelar
                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {modalConfiguracoes && (
+                  <div
+                    className="modal-backdrop"
+                    onClick={() => setModalConfiguracoes(false)}
+                  >
+                    <div
+                      className="modal-card"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="eyebrow">CONFIGURAÇÕES</span>
+                      <h3>Configurações da conta</h3>
+                      <p>{email || "Conta conectada"}</p>
+
+                      <div className="quick-actions">
+                        <button
+                          type="button"
+                          onClick={() => setMostrarSaldo((prev) => !prev)}
+                        >
+                          {mostrarSaldo ? "Ocultar valores na tela" : "Mostrar valores na tela"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setModalConfiguracoes(false);
+                            setActive("Transferências");
+                          }}
+                        >
+                          ⇄ Transferir entre contas
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setModalConfiguracoes(false);
+                            await criarContaDinheiroEspecie();
+                          }}
+                        >
+                          💵 Criar / abrir conta Dinheiro em espécie
+                        </button>
+                      </div>
+
+                      <form onSubmit={alterarSenhaUsuario} className="settings-section">
+                        <div className="field" style={{ marginBottom: 10 }}>
+                          <label>ALTERAR SENHA (NOVA SENHA)</label>
+                          <input
+                            type="password"
+                            minLength={6}
+                            placeholder="Mínimo 6 caracteres"
+                            value={novaSenha}
+                            onChange={(e) => setNovaSenha(e.target.value)}
+                          />
+                        </div>
+                        <div className="field" style={{ marginBottom: 12 }}>
+                          <label>CONFIRMAR NOVA SENHA</label>
+                          <input
+                            type="password"
+                            minLength={6}
+                            placeholder="Repita a nova senha"
+                            value={confirmarSenha}
+                            onChange={(e) => setConfirmarSenha(e.target.value)}
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          className="primary-button"
+                          style={{ width: "100%" }}
+                          disabled={alterandoSenha}
+                        >
+                          {alterandoSenha ? "Salvando senha..." : "Alterar senha"}
+                        </button>
+                      </form>
+
+                      <div className="settings-section">
+                        <button
+                          type="button"
+                          className="danger-button"
+                          style={{ width: "100%", marginBottom: 10 }}
+                          disabled={resetandoConta}
+                          onClick={resetarContaUsuario}
+                        >
+                          {resetandoConta ? "Resetando conta..." : "Resetar conta (apagar dados)"}
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          style={{ width: "100%", marginBottom: 8 }}
+                          onClick={() => {
+                            setModalConfiguracoes(false);
+                            sair();
+                          }}
+                        >
+                          Sair da conta
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          style={{ width: "100%" }}
+                          onClick={() => setModalConfiguracoes(false)}
+                        >
+                          Fechar
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2027,6 +2416,13 @@
                             onClick={() => setModalMovimentacoes(true)}
                           >
                             Movimentações
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => setActive("Transferências")}
+                          >
+                            Transferir
                           </button>
                           <button
                             type="button"
@@ -2114,6 +2510,12 @@
                             <button type="button" onClick={() => setModalMovimentacoes(true)}>
                               ⇄ Movimentações (Entrada / Saída)
                             </button>
+                            <button type="button" onClick={() => setActive("Transferências")}>
+                              ⇄ Transferir entre contas
+                            </button>
+                            <button type="button" onClick={criarContaDinheiroEspecie}>
+                              💵 Criar conta Dinheiro em espécie
+                            </button>
                             <button type="button" onClick={() => setActive("Contas a pagar")}>
                               + Nova conta a pagar
                             </button>
@@ -2134,16 +2536,40 @@
                             <span>CADASTRO</span>
                             <h2>Nova conta</h2>
                           </div>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={criarContaDinheiroEspecie}
+                          >
+                            + Conta Dinheiro em espécie
+                          </button>
                         </div>
                         <form className="form-grid" onSubmit={criarConta}>
                           <div className="field">
                             <label>NOME DA CONTA</label>
                             <input
                               required
-                              placeholder="Ex: Nubank, Carteira..."
+                              placeholder="Ex: Nubank, Dinheiro em espécie..."
                               value={nomeConta}
                               onChange={(e) => setNomeConta(e.target.value)}
                             />
+                          </div>
+                          <div className="field">
+                            <label>TIPO DE CONTA</label>
+                            <select
+                              value={tipoConta}
+                              onChange={(e) => {
+                                const novoTipo = e.target.value;
+                                setTipoConta(novoTipo);
+                                if (novoTipo === "cash" && !nomeConta.trim()) {
+                                  setNomeConta("Dinheiro em espécie");
+                                }
+                              }}
+                            >
+                              <option value="corrente">Conta corrente</option>
+                              <option value="cash">Dinheiro em espécie</option>
+                              <option value="poupanca">Poupança</option>
+                            </select>
                           </div>
                           <div className="field">
                             <label>SALDO INICIAL (R$)</label>
@@ -2179,7 +2605,7 @@
                               <div key={c.id ?? c.uuid} className="list-item">
                                 <div>
                                   <strong>{c.name}</strong>
-                                  <small>{c.type || "Conta corrente"}</small>
+                                  <small>{labelTipoConta(c.type)}</small>
                                 </div>
                                 <strong>{exibirValor(c.balance)}</strong>
                               </div>
@@ -2342,6 +2768,103 @@
                             </div>
                           ))}
                         </div>
+                      </div>
+                    </>
+                  )}
+
+                  {active === "Transferências" && (
+                    <>
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>MOVIMENTAÇÃO INTERNA</span>
+                            <h2>Transferir entre contas</h2>
+                          </div>
+                        </div>
+                        <form className="form-grid" onSubmit={realizarTransferencia}>
+                          <div className="field">
+                            <label>CONTA DE ORIGEM (SAI)</label>
+                            <select
+                              required
+                              value={contaOrigemTransf}
+                              onChange={(e) => setContaOrigemTransf(e.target.value)}
+                            >
+                              <option value="">Selecione...</option>
+                              {contas.map((c, idx) => (
+                                <option key={c.id ?? idx} value={idx}>
+                                  {c.name} ({moeda(c.balance)})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="field">
+                            <label>CONTA DE DESTINO (ENTRA)</label>
+                            <select
+                              required
+                              value={contaDestinoTransf}
+                              onChange={(e) => setContaDestinoTransf(e.target.value)}
+                            >
+                              <option value="">Selecione...</option>
+                              {contas.map((c, idx) => (
+                                <option key={c.id ?? idx} value={idx}>
+                                  {c.name} ({moeda(c.balance)})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="field">
+                            <label>VALOR (R$)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              required
+                              placeholder="0.00"
+                              value={valorTransf}
+                              onChange={(e) => setValorTransf(e.target.value)}
+                            />
+                          </div>
+                          <div className="field">
+                            <label>DESCRIÇÃO</label>
+                            <input
+                              placeholder="Ex: Saque em espécie, PIX..."
+                              value={descricaoTransf}
+                              onChange={(e) => setDescricaoTransf(e.target.value)}
+                            />
+                          </div>
+                          <button type="submit" className="primary-button">
+                            Transferir agora
+                          </button>
+                        </form>
+                      </div>
+
+                      <div className="panel">
+                        <div className="panel-title">
+                          <div>
+                            <span>HISTÓRICO</span>
+                            <h2>Transferências ({transferencias.length})</h2>
+                          </div>
+                        </div>
+                        {transferencias.length === 0 ? (
+                          <div className="empty">
+                            <h3>Nenhuma transferência registrada</h3>
+                            <p>Use o formulário acima para mover saldo entre suas contas.</p>
+                          </div>
+                        ) : (
+                          <div className="list">
+                            {transferencias.map((t) => (
+                              <div key={t.id} className="list-item">
+                                <div>
+                                  <strong>{t.description || "Transferência entre contas"}</strong>
+                                  <small>
+                                    {formatarData(t.transfer_date)} • {t.from_account_name} →{" "}
+                                    {t.to_account_name}
+                                  </small>
+                                </div>
+                                <strong>{exibirValor(t.amount)}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </>
                   )}
