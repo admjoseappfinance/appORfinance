@@ -482,6 +482,30 @@
         font-size: 12px;
       }
 
+      .group-card {
+        border: 1px solid #1e1e1e;
+        border-radius: 14px;
+        background: #0f0f0f;
+        overflow: hidden;
+      }
+
+      .group-header {
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .group-children {
+        border-top: 1px solid #1b1b1b;
+        background: #090909;
+        padding: 12px;
+        display: grid;
+        gap: 8px;
+      }
+
       .badge {
         display: inline-block;
         padding: 4px 9px;
@@ -793,7 +817,7 @@
 
         if (isSecure && "serviceWorker" in navigator) {
           var swCode = [
-            "const CACHE_NAME = 'or-finance-pwa-v5';",
+            "const CACHE_NAME = 'or-finance-pwa-v6';",
             "self.addEventListener('install', (event) => {",
             "  self.skipWaiting();",
             "  event.waitUntil(caches.open(CACHE_NAME));",
@@ -965,6 +989,13 @@
         return `${ano}-${mes}-${dia}`;
       }
 
+      function extrairNomeBaseRecorrente(descricao) {
+        return String(descricao || "")
+          .replace(/\s*\(\d+\/\d+\)\s*$/, "")
+          .replace(/\s*\(Pago c\/ desc\..*\)$/, "")
+          .trim();
+      }
+
       function Login({ onLogin }) {
         const [email, setEmail] = useState("");
         const [password, setPassword] = useState("");
@@ -1109,10 +1140,12 @@
         const [contaRecorrenteSelecionada, setContaRecorrenteSelecionada] = useState("");
         const [tipoRecorrencia, setTipoRecorrencia] = useState("fixa");
         const [quantidadeMesesRecorrente, setQuantidadeMesesRecorrente] = useState("12");
+        const [totalParcelasFinanciamento, setTotalParcelasFinanciamento] = useState("48");
         const [parcelaInicialRecorrente, setParcelaInicialRecorrente] = useState("1");
         const [recorrenteEditando, setRecorrenteEditando] = useState(null);
         const [filtroMesRecorrente, setFiltroMesRecorrente] = useState("todos");
         const [filtroStatusRecorrente, setFiltroStatusRecorrente] = useState("todos");
+        const [gruposExpandidos, setGruposExpandidos] = useState({});
 
         const [contaPagamentoModal, setContaPagamentoModal] = useState(null);
         const [descontoPagamento, setDescontoPagamento] = useState("");
@@ -1754,31 +1787,49 @@
             return;
           }
 
-          const totalMeses = Math.min(60, Math.max(1, Number(quantidadeMesesRecorrente) || 1));
-          const parcelaInicial = Math.max(1, Number(parcelaInicialRecorrente) || 1);
-          const totalParcelasExibicao = parcelaInicial + totalMeses - 1;
           const dataBase = new Date(`${vencimentoRecorrente}T00:00:00`);
           const valorNumerico = Number(valorRecorrente) || 0;
           const descBase = descricaoRecorrente.trim();
-
           const registros = [];
-          for (let i = 0; i < totalMeses; i++) {
-            const dataParcela = adicionarMes(dataBase, i);
-            const numeroAtual = parcelaInicial + i;
-            const descricaoFinal =
-              tipoRecorrencia === "parcelamento"
-                ? `${descBase} (${numeroAtual}/${totalParcelasExibicao})`
-                : descBase;
 
-            registros.push({
-              user_id: userId,
-              account_id: accountId,
-              description: descricaoFinal,
-              amount: valorNumerico,
-              due_date: dataParaString(dataParcela),
-              status: "pending",
-              recurring: true,
-            });
+          if (tipoRecorrencia === "parcelamento") {
+            const totalParcelas = Math.min(120, Math.max(1, Number(totalParcelasFinanciamento) || 1));
+            const parcelaInicial = Math.min(
+              totalParcelas,
+              Math.max(1, Number(parcelaInicialRecorrente) || 1)
+            );
+            const qtdGerar = totalParcelas - parcelaInicial + 1;
+
+            for (let i = 0; i < qtdGerar; i++) {
+              const dataParcela = adicionarMes(dataBase, i);
+              const numeroAtual = parcelaInicial + i;
+
+              registros.push({
+                user_id: userId,
+                account_id: accountId,
+                description: `${descBase} (${numeroAtual}/${totalParcelas})`,
+                amount: valorNumerico,
+                due_date: dataParaString(dataParcela),
+                status: "pending",
+                recurring: true,
+              });
+            }
+          } else {
+            const totalMeses = Math.min(60, Math.max(1, Number(quantidadeMesesRecorrente) || 1));
+
+            for (let i = 0; i < totalMeses; i++) {
+              const dataParcela = adicionarMes(dataBase, i);
+
+              registros.push({
+                user_id: userId,
+                account_id: accountId,
+                description: descBase,
+                amount: valorNumerico,
+                due_date: dataParaString(dataParcela),
+                status: "pending",
+                recurring: true,
+              });
+            }
           }
 
           const { error } = await supabase.from("bills").insert(registros);
@@ -1791,8 +1842,8 @@
           cancelarEdicaoRecorrente();
           await carregarContasPagar();
           alert(
-            totalMeses > 1
-              ? `${totalMeses} meses cadastrados com sucesso!`
+            registros.length > 1
+              ? `${registros.length} lançamento(s) gerado(s) com sucesso!`
               : "Conta recorrente cadastrada com sucesso!"
           );
         }
@@ -1818,12 +1869,13 @@
           setContaRecorrenteSelecionada("");
           setTipoRecorrencia("fixa");
           setQuantidadeMesesRecorrente("12");
+          setTotalParcelasFinanciamento("48");
           setParcelaInicialRecorrente("1");
         }
 
         async function excluirContaRecorrente(item) {
           const confirmar = window.confirm(
-            `Deseja excluir "${item.description}" (${formatarData(item.due_date)})?`
+            `Deseja excluir apenas "${item.description}" (${formatarData(item.due_date)})?`
           );
           if (!confirmar) return;
 
@@ -1833,6 +1885,43 @@
             return;
           }
           await carregarContasPagar();
+        }
+
+        async function excluirSerieRecorrente(grupo) {
+          const confirmar = window.confirm(
+            `Deseja excluir TODAS as ${grupo.itens.length} parcelas/lançamentos de "${grupo.nomeBase}"?`
+          );
+          if (!confirmar) return;
+
+          const ids = grupo.itens.map((item) => item.id).filter(Boolean);
+          if (!ids.length) return;
+
+          const { error } = await supabase
+            .from("bills")
+            .delete()
+            .in("id", ids)
+            .eq("user_id", userId);
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+
+          setGruposExpandidos((prev) => {
+            const copia = { ...prev };
+            delete copia[grupo.chave];
+            return copia;
+          });
+
+          await carregarContasPagar();
+          alert(`Todos os ${ids.length} lançamento(s) de "${grupo.nomeBase}" foram excluídos.`);
+        }
+
+        function alternarGrupoExpandido(chave) {
+          setGruposExpandidos((prev) => ({
+            ...prev,
+            [chave]: !prev[chave],
+          }));
         }
 
         function abrirModalPagamento(conta) {
@@ -2537,6 +2626,27 @@
         const totalRecorrentesFiltradas = contasRecorrentesFiltradas.reduce(
           (acc, c) => acc + Number(c.amount || 0),
           0
+        );
+
+        const gruposRecorrentes = Object.values(
+          contasRecorrentesFiltradas.reduce((acc, item) => {
+            const nomeBase = extrairNomeBaseRecorrente(item.description) || "Conta recorrente";
+            const chave = `${String(item.account_id || "")}__${nomeBase.toLowerCase()}`;
+            if (!acc[chave]) {
+              acc[chave] = {
+                chave,
+                nomeBase,
+                accountId: item.account_id,
+                itens: [],
+                total: 0,
+                pendentes: 0,
+              };
+            }
+            acc[chave].itens.push(item);
+            acc[chave].total += Number(item.amount || 0);
+            if (item.status !== "paid") acc[chave].pendentes += 1;
+            return acc;
+          }, {})
         );
 
         const labelTipoConta = (tipo) => {
@@ -3462,7 +3572,7 @@
                             <label>DESCRIÇÃO</label>
                             <input
                               required
-                              placeholder="Ex: Internet, Financiamento moto..."
+                              placeholder="Ex: Internet, Financiamento da moto..."
                               value={descricaoRecorrente}
                               onChange={(e) => setDescricaoRecorrente(e.target.value)}
                             />
@@ -3516,34 +3626,51 @@
                                   onChange={(e) => setTipoRecorrencia(e.target.value)}
                                 >
                                   <option value="fixa">Conta fixa mensal (Internet, Aluguel...)</option>
-                                  <option value="parcelamento">Parcelamento / Financiamento (1/N)</option>
+                                  <option value="parcelamento">Parcelamento / Financiamento</option>
                                 </select>
                               </div>
-                              <div className="field">
-                                <label>
-                                  {tipoRecorrencia === "parcelamento"
-                                    ? "QUANTAS PARCELAS GERAR"
-                                    : "QUANTOS MESES PROJETAR"}
-                                </label>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="60"
-                                  required
-                                  value={quantidadeMesesRecorrente}
-                                  onChange={(e) => setQuantidadeMesesRecorrente(e.target.value)}
-                                />
-                              </div>
-                              {tipoRecorrencia === "parcelamento" && (
+
+                              {tipoRecorrencia === "parcelamento" ? (
+                                <>
+                                  <div className="field">
+                                    <label>TOTAL DE PARCELAS DO FINANCIAMENTO</label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="120"
+                                      required
+                                      value={totalParcelasFinanciamento}
+                                      onChange={(e) =>
+                                        setTotalParcelasFinanciamento(e.target.value)
+                                      }
+                                    />
+                                  </div>
+                                  <div className="field">
+                                    <label>COMEÇAR NA PARCELA Nº</label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max={Math.max(1, Number(totalParcelasFinanciamento) || 1)}
+                                      required
+                                      value={parcelaInicialRecorrente}
+                                      onChange={(e) =>
+                                        setParcelaInicialRecorrente(e.target.value)
+                                      }
+                                    />
+                                  </div>
+                                </>
+                              ) : (
                                 <div className="field">
-                                  <label>COMEÇAR NA PARCELA Nº</label>
+                                  <label>QUANTOS MESES PROJETAR</label>
                                   <input
                                     type="number"
                                     min="1"
-                                    max="120"
+                                    max="60"
                                     required
-                                    value={parcelaInicialRecorrente}
-                                    onChange={(e) => setParcelaInicialRecorrente(e.target.value)}
+                                    value={quantidadeMesesRecorrente}
+                                    onChange={(e) =>
+                                      setQuantidadeMesesRecorrente(e.target.value)
+                                    }
                                   />
                                 </div>
                               )}
@@ -3570,9 +3697,9 @@
                       <div className="panel">
                         <div className="panel-title">
                           <div>
-                            <span>PROJEÇÃO MENSAL</span>
+                            <span>RESUMO POR CONTA / FINANCIAMENTO</span>
                             <h2>
-                              Contas recorrentes ({contasRecorrentesFiltradas.length}) •{" "}
+                              Contas recorrentes ({gruposRecorrentes.length}) •{" "}
                               {exibirValor(totalRecorrentesFiltradas)}
                             </h2>
                           </div>
@@ -3599,57 +3726,110 @@
                           </div>
                         </div>
 
-                        {contasRecorrentesFiltradas.length === 0 ? (
+                        {gruposRecorrentes.length === 0 ? (
                           <div className="empty">
                             <h3>Nenhuma conta recorrente neste filtro</h3>
                             <p>Cadastre contas fixas, parcelamentos ou financiamentos acima.</p>
                           </div>
                         ) : (
                           <div className="list">
-                            {contasRecorrentesFiltradas.map((c) => (
-                              <div key={c.id} className="list-item">
-                                <div>
-                                  <strong>{c.description}</strong>
-                                  <small>
-                                    Vencimento: {formatarData(c.due_date)} •{" "}
-                                    {nomeContaPorId(c.account_id)}
-                                  </small>
-                                </div>
-                                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                  <strong>{exibirValor(c.amount)}</strong>
-                                  <span
-                                    className={`badge ${
-                                      c.status === "paid" ? "badge-paid" : "badge-pending"
-                                    }`}
-                                  >
-                                    {c.status === "paid" ? "Pago" : "Pendente"}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    className="secondary-button"
-                                    onClick={() => editarContaRecorrente(c)}
-                                  >
-                                    Editar
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="secondary-button"
-                                    onClick={() => excluirContaRecorrente(c)}
-                                  >
-                                    Excluir
-                                  </button>
-                                  {c.status !== "paid" && (
-                                    <button
-                                      type="button"
-                                      className="primary-button"
-                                      onClick={() => abrirModalPagamento(c)}
+                            {gruposRecorrentes.map((grupo) => {
+                              const expandido = Boolean(gruposExpandidos[grupo.chave]);
+                              return (
+                                <div key={grupo.chave} className="group-card">
+                                  <div className="group-header">
+                                    <div>
+                                      <strong>{grupo.nomeBase}</strong>
+                                      <small>
+                                        {nomeContaPorId(grupo.accountId)} • {grupo.itens.length}{" "}
+                                        parcela(s)/lançamento(s) • {grupo.pendentes} pendente(s)
+                                      </small>
+                                    </div>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: 8,
+                                        alignItems: "center",
+                                        flexWrap: "wrap",
+                                      }}
                                     >
-                                      Pagar
-                                    </button>
+                                      <strong>{exibirValor(grupo.total)}</strong>
+                                      <button
+                                        type="button"
+                                        className="secondary-button"
+                                        onClick={() => alternarGrupoExpandido(grupo.chave)}
+                                      >
+                                        {expandido ? "Ocultar parcelas" : "Ver parcelas"}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="danger-button"
+                                        onClick={() => excluirSerieRecorrente(grupo)}
+                                      >
+                                        Excluir série
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {expandido && (
+                                    <div className="group-children">
+                                      {grupo.itens.map((c) => (
+                                        <div key={c.id} className="list-item">
+                                          <div>
+                                            <strong>{c.description}</strong>
+                                            <small>
+                                              Vencimento: {formatarData(c.due_date)}
+                                            </small>
+                                          </div>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: 8,
+                                              alignItems: "center",
+                                              flexWrap: "wrap",
+                                            }}
+                                          >
+                                            <strong>{exibirValor(c.amount)}</strong>
+                                            <span
+                                              className={`badge ${
+                                                c.status === "paid"
+                                                  ? "badge-paid"
+                                                  : "badge-pending"
+                                              }`}
+                                            >
+                                              {c.status === "paid" ? "Pago" : "Pendente"}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              className="secondary-button"
+                                              onClick={() => editarContaRecorrente(c)}
+                                            >
+                                              Editar
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="secondary-button"
+                                              onClick={() => excluirContaRecorrente(c)}
+                                            >
+                                              Excluir
+                                            </button>
+                                            {c.status !== "paid" && (
+                                              <button
+                                                type="button"
+                                                className="primary-button"
+                                                onClick={() => abrirModalPagamento(c)}
+                                              >
+                                                Pagar
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
                                   )}
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>
