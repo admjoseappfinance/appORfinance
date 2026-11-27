@@ -793,7 +793,7 @@
 
         if (isSecure && "serviceWorker" in navigator) {
           var swCode = [
-            "const CACHE_NAME = 'or-finance-pwa-v4';",
+            "const CACHE_NAME = 'or-finance-pwa-v5';",
             "self.addEventListener('install', (event) => {",
             "  self.skipWaiting();",
             "  event.waitUntil(caches.open(CACHE_NAME));",
@@ -1919,7 +1919,6 @@
               return;
             }
 
-            // Se for conta recorrente fixa (sem numeração de parcela x/y) e não houver próxima pendente, cria o próximo mês automaticamente
             const temNumeracaoParcela = /\(\d+\/\d+\)/.test(descricaoOriginalLimpa);
             if (contaPagamentoModal.recurring && !temNumeracaoParcela && contaPagamentoModal.due_date) {
               const proximoVenc = dataParaString(
@@ -4238,17 +4237,17 @@
         }
 
         if (!session) {
-          return <Login onLogin="{setSession}"/>;
+          return <Login onLogin={setSession} />;
         }
 
         return (
-          <Painel email="{session.user?.email}" sair="{sair}" userId="{session.user?.id}"/>
+          <Painel email={session.user?.email} sair={sair} userId={session.user?.id} />
         );
       }
 
       ReactDOM.createRoot(document.getElementById("root")).render(
         <ErrorBoundary>
-          <App/>
+          <App />
         </ErrorBoundary>
       );
     </script>
