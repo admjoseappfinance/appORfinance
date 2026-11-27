@@ -440,6 +440,20 @@
         font-weight: 600;
       }
 
+      .filter-bar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .filter-bar select,
+      .filter-bar input {
+        width: auto;
+        min-width: 170px;
+        padding: 9px 12px;
+      }
+
       .list {
         display: grid;
         gap: 10px;
@@ -923,6 +937,27 @@
         return new Date(data).toLocaleDateString("pt-BR");
       }
 
+      function formatarMesAno(ym) {
+        if (!ym) return "Todos os meses";
+        const [ano, mes] = String(ym).split("-");
+        const nomes = [
+          "Jan",
+          "Fev",
+          "Mar",
+          "Abr",
+          "Mai",
+          "Jun",
+          "Jul",
+          "Ago",
+          "Set",
+          "Out",
+          "Nov",
+          "Dez",
+        ];
+        const idx = Number(mes) - 1;
+        return `${nomes[idx] || mes}/${ano}`;
+      }
+
       function dataParaString(data) {
         const ano = data.getFullYear();
         const mes = String(data.getMonth() + 1).padStart(2, "0");
@@ -1072,7 +1107,12 @@
         const [valorRecorrente, setValorRecorrente] = useState("");
         const [vencimentoRecorrente, setVencimentoRecorrente] = useState("");
         const [contaRecorrenteSelecionada, setContaRecorrenteSelecionada] = useState("");
+        const [tipoRecorrencia, setTipoRecorrencia] = useState("fixa");
+        const [quantidadeMesesRecorrente, setQuantidadeMesesRecorrente] = useState("12");
+        const [parcelaInicialRecorrente, setParcelaInicialRecorrente] = useState("1");
         const [recorrenteEditando, setRecorrenteEditando] = useState(null);
+        const [filtroMesRecorrente, setFiltroMesRecorrente] = useState("todos");
+        const [filtroStatusRecorrente, setFiltroStatusRecorrente] = useState("todos");
 
         const [contaPagamentoModal, setContaPagamentoModal] = useState(null);
         const [descontoPagamento, setDescontoPagamento] = useState("");
@@ -1691,43 +1731,68 @@
           const accountId = conta.id ?? conta.uuid;
           if (!userId || !accountId) return;
 
-          const dados = {
-            user_id: userId,
-            account_id: accountId,
-            description: descricaoRecorrente,
-            amount: Number(valorRecorrente) || 0,
-            due_date: vencimentoRecorrente,
-            status: "pending",
-            recurring: true,
-          };
+          if (recorrenteEditando) {
+            const { error } = await supabase
+              .from("bills")
+              .update({
+                account_id: accountId,
+                description: descricaoRecorrente,
+                amount: Number(valorRecorrente) || 0,
+                due_date: vencimentoRecorrente,
+                recurring: true,
+              })
+              .eq("id", recorrenteEditando.id);
 
-          const { error } = recorrenteEditando
-            ? await supabase
-                .from("bills")
-                .update({
-                  account_id: accountId,
-                  description: descricaoRecorrente,
-                  amount: Number(valorRecorrente) || 0,
-                  due_date: vencimentoRecorrente,
-                  recurring: true,
-                })
-                .eq("id", recorrenteEditando.id)
-            : await supabase.from("bills").insert(dados);
+            if (error) {
+              alert(error.message);
+              return;
+            }
+
+            cancelarEdicaoRecorrente();
+            await carregarContasPagar();
+            alert("Conta recorrente atualizada com sucesso!");
+            return;
+          }
+
+          const totalMeses = Math.min(60, Math.max(1, Number(quantidadeMesesRecorrente) || 1));
+          const parcelaInicial = Math.max(1, Number(parcelaInicialRecorrente) || 1);
+          const totalParcelasExibicao = parcelaInicial + totalMeses - 1;
+          const dataBase = new Date(`${vencimentoRecorrente}T00:00:00`);
+          const valorNumerico = Number(valorRecorrente) || 0;
+          const descBase = descricaoRecorrente.trim();
+
+          const registros = [];
+          for (let i = 0; i < totalMeses; i++) {
+            const dataParcela = adicionarMes(dataBase, i);
+            const numeroAtual = parcelaInicial + i;
+            const descricaoFinal =
+              tipoRecorrencia === "parcelamento"
+                ? `${descBase} (${numeroAtual}/${totalParcelasExibicao})`
+                : descBase;
+
+            registros.push({
+              user_id: userId,
+              account_id: accountId,
+              description: descricaoFinal,
+              amount: valorNumerico,
+              due_date: dataParaString(dataParcela),
+              status: "pending",
+              recurring: true,
+            });
+          }
+
+          const { error } = await supabase.from("bills").insert(registros);
 
           if (error) {
             alert(error.message);
             return;
           }
 
-          setDescricaoRecorrente("");
-          setValorRecorrente("");
-          setVencimentoRecorrente("");
-          setContaRecorrenteSelecionada("");
-          setRecorrenteEditando(null);
+          cancelarEdicaoRecorrente();
           await carregarContasPagar();
           alert(
-            recorrenteEditando
-              ? "Conta recorrente atualizada com sucesso!"
+            totalMeses > 1
+              ? `${totalMeses} meses cadastrados com sucesso!`
               : "Conta recorrente cadastrada com sucesso!"
           );
         }
@@ -1751,6 +1816,23 @@
           setValorRecorrente("");
           setVencimentoRecorrente("");
           setContaRecorrenteSelecionada("");
+          setTipoRecorrencia("fixa");
+          setQuantidadeMesesRecorrente("12");
+          setParcelaInicialRecorrente("1");
+        }
+
+        async function excluirContaRecorrente(item) {
+          const confirmar = window.confirm(
+            `Deseja excluir "${item.description}" (${formatarData(item.due_date)})?`
+          );
+          if (!confirmar) return;
+
+          const { error } = await supabase.from("bills").delete().eq("id", item.id);
+          if (error) {
+            alert(error.message);
+            return;
+          }
+          await carregarContasPagar();
         }
 
         function abrirModalPagamento(conta) {
@@ -1812,10 +1894,15 @@
               return;
             }
 
+            const descricaoOriginalLimpa = String(contaPagamentoModal.description || "").replace(
+              /\s*\(Pago c\/ desc\..*\)$/,
+              ""
+            );
+
             const descricaoAtualizada =
               desconto > 0
-                ? `${contaPagamentoModal.description} (Pago c/ desc. de ${moeda(desconto)})`
-                : contaPagamentoModal.description;
+                ? `${descricaoOriginalLimpa} (Pago c/ desc. de ${moeda(desconto)})`
+                : descricaoOriginalLimpa;
 
             const { error } = await supabase
               .from("bills")
@@ -1830,6 +1917,33 @@
             if (error) {
               alert(error.message);
               return;
+            }
+
+            // Se for conta recorrente fixa (sem numeração de parcela x/y) e não houver próxima pendente, cria o próximo mês automaticamente
+            const temNumeracaoParcela = /\(\d+\/\d+\)/.test(descricaoOriginalLimpa);
+            if (contaPagamentoModal.recurring && !temNumeracaoParcela && contaPagamentoModal.due_date) {
+              const proximoVenc = dataParaString(
+                adicionarMes(new Date(`${contaPagamentoModal.due_date}T00:00:00`), 1)
+              );
+              const jaExisteProximo = contasPagar.some(
+                (b) =>
+                  b.recurring &&
+                  b.id !== contaPagamentoModal.id &&
+                  String(b.description || "").startsWith(descricaoOriginalLimpa) &&
+                  String(b.due_date || "").slice(0, 7) === proximoVenc.slice(0, 7)
+              );
+
+              if (!jaExisteProximo) {
+                await supabase.from("bills").insert({
+                  user_id: userId,
+                  account_id: contaPagamentoModal.account_id,
+                  description: descricaoOriginalLimpa,
+                  amount: valorOriginal,
+                  due_date: proximoVenc,
+                  status: "pending",
+                  recurring: true,
+                });
+              }
             }
 
             setContaPagamentoModal(null);
@@ -2402,6 +2516,30 @@
         const contasAvulsas = contasPagar.filter((c) => !c.recurring);
         const contasRecorrentes = contasPagar.filter((c) => c.recurring);
 
+        const mesesDisponiveisRecorrentes = Array.from(
+          new Set(
+            contasRecorrentes
+              .map((c) => String(c.due_date || "").slice(0, 7))
+              .filter(Boolean)
+          )
+        ).sort();
+
+        const contasRecorrentesFiltradas = contasRecorrentes.filter((c) => {
+          const mesItem = String(c.due_date || "").slice(0, 7);
+          const passaMes =
+            filtroMesRecorrente === "todos" || mesItem === filtroMesRecorrente;
+          const passaStatus =
+            filtroStatusRecorrente === "todos" ||
+            (filtroStatusRecorrente === "pending" && c.status !== "paid") ||
+            (filtroStatusRecorrente === "paid" && c.status === "paid");
+          return passaMes && passaStatus;
+        });
+
+        const totalRecorrentesFiltradas = contasRecorrentesFiltradas.reduce(
+          (acc, c) => acc + Number(c.amount || 0),
+          0
+        );
+
         const labelTipoConta = (tipo) => {
           const t = String(tipo || "corrente").toLowerCase();
           if (t === "cash" || t === "dinheiro") return "Dinheiro em espécie";
@@ -2667,7 +2805,7 @@
                           <div className="manual-box">
                             <div><strong>1. Contas e Dinheiro em espécie:</strong> Cadastre bancos, carteiras ou crie uma conta <em>Dinheiro em espécie</em> para controlar o dinheiro físico separado.</div>
                             <div><strong>2. Entradas, Saídas e Transferências:</strong> Use <em>Entradas</em> e <em>Saídas</em> para ganhos e gastos, e <em>Transferências</em> para mover saldo de uma conta para outra sem lançar saída e entrada separadas.</div>
-                            <div><strong>3. Contas a pagar e Contas recorrentes:</strong> Registre contas avulsas ou contas recorrentes (internet, parcelas, financiamento) e toque em <em>Pagar</em>, podendo informar desconto por pagamento antecipado.</div>
+                            <div><strong>3. Contas a pagar e Contas recorrentes:</strong> Cadastre contas fixas (internet, aluguel) ou parcelamentos/financiamentos projetando os próximos meses. Toque em <em>Pagar</em> e informe desconto se pagar antecipado.</div>
                             <div><strong>4. Cartões e Faturas:</strong> Cadastre cartões com limite, fechamento e vencimento, lance compras à vista ou parceladas e pague faturas ou parcelas.</div>
                             <div><strong>5. Metas e Relatórios:</strong> Acompanhe o progresso das suas metas e veja o balanço geral de entradas, saídas e saldos.</div>
                           </div>
@@ -2784,12 +2922,9 @@
                           <small>{despesas.length} lançamentos</small>
                         </div>
                         <div className="stat-card">
-                          <span>CONTAS A PAGAR</span>
-                          <strong>{contasPagar.length}</strong>
-                          <small>
-                            {contasPagar.filter((item) => item.status !== "paid").length}{" "}
-                            pendentes
-                          </small>
+                          <span>CONTAS A PAGAR / RECORRENTES</span>
+                          <strong>{contasPagar.filter((item) => item.status !== "paid").length}</strong>
+                          <small>lançamentos pendentes</small>
                         </div>
                       </div>
 
@@ -2811,7 +2946,7 @@
                             <div className="list">
                               {contasPagar
                                 .filter((c) => c.status !== "paid")
-                                .slice(0, 5)
+                                .slice(0, 6)
                                 .map((c) => (
                                   <div key={c.id} className="list-item">
                                     <div>
@@ -2854,8 +2989,8 @@
                             <button type="button" onClick={criarContaDinheiroEspecie}>
                               💵 Criar conta Dinheiro em espécie
                             </button>
-                            <button type="button" onClick={() => setActive("Contas a pagar")}>
-                              + Nova conta a pagar
+                            <button type="button" onClick={() => setActive("Contas recorrentes")}>
+                              + Nova conta recorrente
                             </button>
                             <button type="button" onClick={() => setActive("Cartões")}>
                               + Lançar compra no cartão
@@ -3328,13 +3463,13 @@
                             <label>DESCRIÇÃO</label>
                             <input
                               required
-                              placeholder="Ex: Internet, Parcela moto 8/36, Financiamento..."
+                              placeholder="Ex: Internet, Financiamento moto..."
                               value={descricaoRecorrente}
                               onChange={(e) => setDescricaoRecorrente(e.target.value)}
                             />
                           </div>
                           <div className="field">
-                            <label>VALOR (R$)</label>
+                            <label>VALOR MENSAL (R$)</label>
                             <input
                               type="number"
                               step="0.01"
@@ -3345,7 +3480,9 @@
                             />
                           </div>
                           <div className="field">
-                            <label>VENCIMENTO</label>
+                            <label>
+                              {recorrenteEditando ? "VENCIMENTO" : "1º VENCIMENTO"}
+                            </label>
                             <input
                               type="date"
                               required
@@ -3370,9 +3507,53 @@
                               ))}
                             </select>
                           </div>
+
+                          {!recorrenteEditando && (
+                            <>
+                              <div className="field">
+                                <label>TIPO DE RECORRÊNCIA</label>
+                                <select
+                                  value={tipoRecorrencia}
+                                  onChange={(e) => setTipoRecorrencia(e.target.value)}
+                                >
+                                  <option value="fixa">Conta fixa mensal (Internet, Aluguel...)</option>
+                                  <option value="parcelamento">Parcelamento / Financiamento (1/N)</option>
+                                </select>
+                              </div>
+                              <div className="field">
+                                <label>
+                                  {tipoRecorrencia === "parcelamento"
+                                    ? "QUANTAS PARCELAS GERAR"
+                                    : "QUANTOS MESES PROJETAR"}
+                                </label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="60"
+                                  required
+                                  value={quantidadeMesesRecorrente}
+                                  onChange={(e) => setQuantidadeMesesRecorrente(e.target.value)}
+                                />
+                              </div>
+                              {tipoRecorrencia === "parcelamento" && (
+                                <div className="field">
+                                  <label>COMEÇAR NA PARCELA Nº</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="120"
+                                    required
+                                    value={parcelaInicialRecorrente}
+                                    onChange={(e) => setParcelaInicialRecorrente(e.target.value)}
+                                  />
+                                </div>
+                              )}
+                            </>
+                          )}
+
                           <div style={{ display: "flex", gap: 8 }}>
                             <button type="submit" className="primary-button">
-                              {recorrenteEditando ? "Salvar" : "Cadastrar"}
+                              {recorrenteEditando ? "Salvar" : "Gerar lançamentos"}
                             </button>
                             {recorrenteEditando && (
                               <button
@@ -3390,18 +3571,43 @@
                       <div className="panel">
                         <div className="panel-title">
                           <div>
-                            <span>LISTA</span>
-                            <h2>Contas recorrentes ({contasRecorrentes.length})</h2>
+                            <span>PROJEÇÃO MENSAL</span>
+                            <h2>
+                              Contas recorrentes ({contasRecorrentesFiltradas.length}) •{" "}
+                              {exibirValor(totalRecorrentesFiltradas)}
+                            </h2>
+                          </div>
+                          <div className="filter-bar">
+                            <select
+                              value={filtroMesRecorrente}
+                              onChange={(e) => setFiltroMesRecorrente(e.target.value)}
+                            >
+                              <option value="todos">Todos os meses</option>
+                              {mesesDisponiveisRecorrentes.map((ym) => (
+                                <option key={ym} value={ym}>
+                                  {formatarMesAno(ym)}
+                                </option>
+                              ))}
+                            </select>
+                            <select
+                              value={filtroStatusRecorrente}
+                              onChange={(e) => setFiltroStatusRecorrente(e.target.value)}
+                            >
+                              <option value="todos">Todas</option>
+                              <option value="pending">Pendentes</option>
+                              <option value="paid">Pagas</option>
+                            </select>
                           </div>
                         </div>
-                        {contasRecorrentes.length === 0 ? (
+
+                        {contasRecorrentesFiltradas.length === 0 ? (
                           <div className="empty">
-                            <h3>Nenhuma conta recorrente cadastrada</h3>
+                            <h3>Nenhuma conta recorrente neste filtro</h3>
                             <p>Cadastre contas fixas, parcelamentos ou financiamentos acima.</p>
                           </div>
                         ) : (
                           <div className="list">
-                            {contasRecorrentes.map((c) => (
+                            {contasRecorrentesFiltradas.map((c) => (
                               <div key={c.id} className="list-item">
                                 <div>
                                   <strong>{c.description}</strong>
@@ -3425,6 +3631,13 @@
                                     onClick={() => editarContaRecorrente(c)}
                                   >
                                     Editar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="secondary-button"
+                                    onClick={() => excluirContaRecorrente(c)}
+                                  >
+                                    Excluir
                                   </button>
                                   {c.status !== "paid" && (
                                     <button
@@ -4025,21 +4238,17 @@
         }
 
         if (!session) {
-          return <Login onLogin={setSession} />;
+          return <Login onLogin="{setSession}"/>;
         }
 
         return (
-          <Painel
-            email={session.user?.email}
-            userId={session.user?.id}
-            sair={sair}
-          />
+          <Painel email="{session.user?.email}" sair="{sair}" userId="{session.user?.id}"/>
         );
       }
 
       ReactDOM.createRoot(document.getElementById("root")).render(
         <ErrorBoundary>
-          <App />
+          <App/>
         </ErrorBoundary>
       );
     </script>
